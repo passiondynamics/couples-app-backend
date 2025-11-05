@@ -1,4 +1,7 @@
 /target
 *.swp
-*.db
 Makefile
+
+*.db
+*.db-shm
+*.db-wal

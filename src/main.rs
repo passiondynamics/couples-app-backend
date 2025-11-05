@@ -1,6 +1,8 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 1:51pm
-//! Description: TODO
+//! Description: Starts up services (bootstrapping with corresponding
+//!              interfaces). Just setup/kicking off the backend, nothing
+//!              else.
 
 use anyhow::Result;
 use tracing::info;
@@ -17,6 +19,13 @@ use services::{
     LogService,
 };
 
+use interfaces::DatabaseInterface;
+use models::interface::AddUserRequest;
+use models::data::{
+    Username,
+    Password,
+};
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,6 +35,11 @@ async fn main() -> Result<()> {
     info!("{:#?}", config);
 
     let sqlite = SqliteInterface::new(&config).await?;
+    let username = Username::new("irith")?;
+    let password = Password::new("testpassword")?;
+    let add_user_request = AddUserRequest::new(username, password);
+    let user = sqlite.add_user(&add_user_request).await?;
+    info!("{:?}", user);
 
     Ok(())
 }

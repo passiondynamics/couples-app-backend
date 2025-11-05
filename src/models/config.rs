@@ -1,6 +1,7 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 10:43pm
-//! Description: TODO
+//! Description: Define what (backend) behavior is configurable, via
+//!              environment variables.
 
 use std::env;
 use std::path::PathBuf;

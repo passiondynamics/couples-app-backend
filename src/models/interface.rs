@@ -1,7 +1,10 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 6:59pm
-//! Description: TODO
+//! Description: Describes what changes can be made to the data through
+//!              the interfaces (and what info is needed to make those
+//!              changes).
 
+use thiserror::Error;
 use jiff::Zoned;
 
 use crate::models::data::{
@@ -20,6 +23,7 @@ use crate::models::data::{
 };
 
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AddUserRequest {
     username: Username,
     password: Password,
@@ -29,15 +33,32 @@ impl AddUserRequest {
     pub fn new(username: Username, password: Password) -> Self {
         Self {username, password}
     }
+
+    pub fn username(&self) -> &Username {
+        &self.username
+    }
+
+    pub fn password(&self) -> &Password {
+        &self.password
+    }
 }
 
 
-pub enum AddUserError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+pub enum AddUserError {
+    #[error("username already exists: `{0}`")]
+    UsernameExists(String),
+
+    #[error("could not insert user: {0}")]
+    Unknown(String),
+}
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RemoveUserError {}
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AddPartnerRequest {
     user_id_1: UserID,
     user_id_2: UserID,
@@ -50,12 +71,15 @@ impl AddPartnerRequest {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AddPartnerError {}
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RemovePartnerError {}
 
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AddQuestionRequest {
     category: QuestionCategory,
     prompt: String,
@@ -69,12 +93,15 @@ impl AddQuestionRequest {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AddQuestionError {}
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RemoveQuestionError {}
 
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AddAnswerRequest {
     question_id: QuestionID,
     user_id: UserID,
@@ -89,9 +116,11 @@ impl AddAnswerRequest {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AddAnswerError {}
 
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct AddLocationRequest {
     user_id: UserID,
     timestamp: Zoned,
@@ -107,9 +136,11 @@ impl AddLocationRequest {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AddLocationError {}
 
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StartHeartbeatRequest {
     user_id: UserID,
     start_timestamp: Zoned,
@@ -122,9 +153,11 @@ impl StartHeartbeatRequest {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum StartHeartbeatError {}
 
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EndHeartbeatRequest {
     heartbeat_id: HeartbeatID,
     end_timestamp: Zoned,
@@ -137,4 +170,5 @@ impl EndHeartbeatRequest {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EndHeartbeatError {}

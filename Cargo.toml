@@ -6,12 +6,20 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0"
 jiff = "0.2"
+regex = "1.12"
 thiserror = "2.0"
 tracing = "0.1"
+
+  [dependencies.argon2]
+  version = "0.5"
+  features = [
+    "std",
+  ]
 
   [dependencies.sqlx]
   version = "0.8"
   features = [
+    "macros",
     "runtime-tokio",
     "sqlite",
   ]

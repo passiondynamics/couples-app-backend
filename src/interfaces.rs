@@ -1,12 +1,22 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 6:47pm
-//! Description: TODO
+//! Description: Translation layers from intent (upstairs from a given
+//!              service) to details of making it happen (downstairs in
+//!              the data storage, or with an API, or just *somewhere
+//!              else*).
 
 use anyhow::{
     Context,
     Result,
 };
-use sqlx::migrate::MigrateDatabase;
+use sqlx::{
+    query,
+    Executor,
+};
+use sqlx::migrate::{
+    MigrateDatabase,
+    Migrator,
+};
 use sqlx::sqlite::{
     Sqlite,
     SqliteConnectOptions,
@@ -15,13 +25,18 @@ use sqlx::sqlite::{
 };
 use tracing::{
     debug,
+    error,
     info,
 };
 
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::constants::DB_FILENAME;
+use crate::constants::{
+    DB_FILENAME,
+    MIGRATIONS_DIR,
+};
 use crate::models::config::Config;
 use crate::models::data::{
     Answer,
@@ -33,6 +48,7 @@ use crate::models::data::{
     QuestionID,
     User,
     UserID,
+    UserPreferences,
 };
 use crate::models::interface::{
     AddAnswerError,
@@ -110,14 +126,79 @@ impl SqliteInterface {
                               .with_context(|| format!("could not open sqlite database @ `{}`", url))?;
         info!("Opened sqlite database @ `{}`", url);
 
-        Ok(Self {pool})
+        let sqlite = Self {pool};
+        sqlite.validate_schema(config).await.with_context(|| "could not validate schema")?;
+
+        Ok(sqlite)
+    }
+
+    async fn validate_schema(&self, config: &Config) -> Result<()> {
+        let path = config.appdata_dir.join(MIGRATIONS_DIR);
+        let dir_exists = fs::metadata(&path)
+                            .map_or(false, |d| d.is_dir());
+        if !dir_exists {
+            fs::create_dir(&path)?;
+        }
+
+        Migrator::new(path)
+            .await
+            .with_context(|| "could not create migrator")?
+            .run(&self.pool)
+            .await
+            .with_context(|| "could not run migrator")
     }
 }
 
 impl DatabaseInterface for SqliteInterface {
     async fn add_user(&self, request: &AddUserRequest) -> Result<User, AddUserError> {
-        todo!()
+        // Use request + defaults from `UserPreferences` to build an
+        // insert query.
+        let username = request.username().clone();
+        let password = request.password().clone();
+        let preferences = UserPreferences::new();
+        let query = query(r#"
+                INSERT INTO user
+                    (username, password, new_feature_notifications, location_history, heartbeat_history)
+                VALUES
+                    ($1, $2, $3, $4, $5)
+                RETURNING
+                    id"#,
+            )
+            .bind(username.as_str())
+            .bind(password.as_str())
+            .bind(preferences.new_feature_notifications())
+            .bind(preferences.location_history())
+            .bind(preferences.heartbeat_history());
+
+        // Use the corresponding `rowid` (since it's our primary key) as
+        // our user's ID.
+        let id = query.execute(&self.pool)
+                      .await
+                      .map_err(|e| match e.as_database_error() {
+                          Some(e) if e.is_unique_violation() => AddUserError::UsernameExists(username.as_str().to_string()),
+                          _ => AddUserError::Unknown(e.to_string()),
+                      })?
+                      .last_insert_rowid();
+
+        Ok(User::new(
+            id,
+            username,
+            password,
+            preferences,
+        ))
     }
+    // let mut tx = self.pool.begin()
+    //                       .await
+    //                       .map_err(|_| AddUserError::TransactionStart)?;
+    // let id = tx.execute(query)
+    //            .await
+    //            .inspect_err(|e| error!("Could not execute transaction: {}", e))
+    //            .map_err(|_| AddUserError::TransactionExecute)?
+    //            .last_insert_rowid();
+    // tx.commit()
+    //   .await
+    //   .map_err(|_| AddUserError::TransactionCommit)?;
+
 
     async fn remove_user(&self, user_id: UserID) -> Result<User, RemoveUserError> {
         todo!()
