@@ -49,6 +49,10 @@ impl User {
         let id = UserID::from(raw_id);
         Self {id, username, password, preferences}
     }
+
+    pub fn id(self) -> UserID {
+        self.id
+    }
 }
 
 
@@ -59,6 +63,12 @@ pub struct UserID(i64);
 impl From<i64> for UserID {
     fn from(raw: i64) -> Self {
         Self(raw)
+    }
+}
+
+impl Into<i64> for UserID {
+    fn into(self) -> i64 {
+        self.0
     }
 }
 
@@ -108,10 +118,11 @@ impl Password {
             Algorithm::default(),
             Version::default(),
             Params::default(),
+            // TODO: add pepper.
         );
         let salt = SaltString::generate(&mut OsRng);
         let hash = argon2.hash_password(raw.as_bytes(), &salt)
-                         .map_err(|_| PasswordError::Unknown)?
+                         .map_err(|e| PasswordError::Unknown(e.to_string()))?
                          .to_string();
 
         Ok(Self(hash))
@@ -123,13 +134,13 @@ impl Password {
 }
 
 /// Errors for not meeting password standards or hashing issues.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum PasswordError {
     #[error("password does not meet minimum length requirements")]
     Length,
 
-    #[error("could not create password")]
-    Unknown,
+    #[error("could not create password: {0}")]
+    Unknown(String),
 }
 
 
@@ -179,22 +190,45 @@ impl UserPreferences {
 }
 
 
-// --- partners ---
+// --- couples ---
 
 /// A paired set of users. Foundation for everything else (Q&A, location
 /// sharing, heartbeats, etc).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Partner {
-    id: PartnerID,
+pub struct Couple {
+    id: CoupleID,
     user_id_1: UserID,
     user_id_2: UserID,
     // created_at: Zoned,
 }
 
+impl Couple {
+    pub fn new(raw_id: i64, user_id_1: UserID, user_id_2: UserID) -> Self {
+        let id = CoupleID::from(raw_id);
+        Self {id, user_id_1, user_id_2}
+    }
 
-/// Unique identifier for a set of partners, internal use only.
+    pub fn id(&self) -> &CoupleID {
+        &self.id
+    }
+}
+
+
+/// Unique identifier for a couple, internal use only.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PartnerID(i64);
+pub struct CoupleID(i64);
+
+impl From<i64> for CoupleID {
+    fn from(raw: i64) -> Self {
+        Self(raw)
+    }
+}
+
+impl Into<i64> for CoupleID {
+    fn into(self) -> i64 {
+        self.0
+    }
+}
 
 
 // --- questions ---

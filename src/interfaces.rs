@@ -42,8 +42,8 @@ use crate::models::data::{
     Answer,
     Heartbeat,
     Location,
-    Partner,
-    PartnerID,
+    Couple,
+    CoupleID,
     Question,
     QuestionID,
     User,
@@ -55,47 +55,57 @@ use crate::models::interface::{
     AddAnswerRequest,
     AddLocationError,
     AddLocationRequest,
-    AddPartnerError,
-    AddPartnerRequest,
     AddQuestionError,
     AddQuestionRequest,
     AddUserError,
     AddUserRequest,
     EndHeartbeatError,
     EndHeartbeatRequest,
-    RemovePartnerError,
     RemoveQuestionError,
     RemoveUserError,
+    SetCoupleError,
+    SetCoupleRequest,
     StartHeartbeatError,
     StartHeartbeatRequest,
+    UnsetCoupleError,
 };
 
 
 pub trait DatabaseInterface: Clone + Send + Sync + 'static {
+    /// Create a new user in the database.
     fn add_user(&self, request: &AddUserRequest) -> impl Future<Output = Result<User, AddUserError>> + Send;
 
-    fn remove_user(&self, user_id: UserID) -> impl Future<Output = Result<User, RemoveUserError>> + Send; // TODO: removes should return `()`?
+    /// Remove a given user from the database.
+    fn remove_user(&self, user_id: UserID) -> impl Future<Output = Result<(), RemoveUserError>> + Send;
 
-    fn add_partner(&self, request: &AddPartnerRequest) -> impl Future<Output = Result<Partner, AddPartnerError>> + Send;
+    /// Associate two users together as a couple.
+    fn set_couple(&self, request: &SetCoupleRequest) -> impl Future<Output = Result<Couple, SetCoupleError>> + Send;
 
-    fn remove_partner(&self, partner_id: PartnerID) -> impl Future<Output = Result<Partner, RemovePartnerError>> + Send;
+    /// Disassociate the given couple from each other.
+    fn unset_couple(&self, couple_id: CoupleID) -> impl Future<Output = Result<(), UnsetCoupleError>> + Send;
 
+    /// Add a new question.
     fn add_question(&self, request: &AddQuestionRequest) -> impl Future<Output = Result<Question, AddQuestionError>> + Send;
 
-    fn remove_question(&self, question_id: QuestionID) -> impl Future<Output = Result<Question, RemoveQuestionError>> + Send;
+    /// Remove a given question.
+    fn remove_question(&self, question_id: QuestionID) -> impl Future<Output = Result<(), RemoveQuestionError>> + Send;
 
+    /// Add a new answer.
     fn add_answer(&self, request: &AddAnswerRequest) -> impl Future<Output = Result<Answer, AddAnswerError>> + Send;
 
     // TODO: any reason to have `remove_answer`
 
+    /// Add a new location datapoint.
     fn add_location(&self, request: &AddLocationRequest) -> impl Future<Output = Result<Location, AddLocationError>> + Send;
 
     // TODO: any reason to have individual
     // `remove_location`/`remove_heartbeat` instead of on bulk by
     // `*_history_preference`?
 
+    /// Add a new heartbeat range.
     fn start_heartbeat(&self, request: &StartHeartbeatRequest) -> impl Future<Output = Result<Heartbeat, StartHeartbeatError>> + Send;
 
+    /// Mark a given heartbeat range as finished.
     fn end_heartbeat(&self, request: &EndHeartbeatRequest) -> impl Future<Output = Result<Heartbeat, EndHeartbeatError>> + Send;
 }
 
@@ -106,6 +116,8 @@ pub struct SqliteInterface {
 }
 
 impl SqliteInterface {
+    /// Create a new database if not already present, set up a connection
+    /// pool, and update the schema if needed.
     pub async fn new(config: &Config) -> Result<Self> {
         let path = config.appdata_dir.join(DB_FILENAME);
         let url = format!("sqlite://{}", path.display());
@@ -132,6 +144,8 @@ impl SqliteInterface {
         Ok(sqlite)
     }
 
+    /// Use the migration SQL files to ensure the database has the correct
+    /// schema before use.
     async fn validate_schema(&self, config: &Config) -> Result<()> {
         let path = config.appdata_dir.join(MIGRATIONS_DIR);
         let dir_exists = fs::metadata(&path)
@@ -161,9 +175,7 @@ impl DatabaseInterface for SqliteInterface {
                     (username, password, new_feature_notifications, location_history, heartbeat_history)
                 VALUES
                     ($1, $2, $3, $4, $5)
-                RETURNING
-                    id"#,
-            )
+            "#)
             .bind(username.as_str())
             .bind(password.as_str())
             .bind(preferences.new_feature_notifications())
@@ -200,23 +212,88 @@ impl DatabaseInterface for SqliteInterface {
     //   .map_err(|_| AddUserError::TransactionCommit)?;
 
 
-    async fn remove_user(&self, user_id: UserID) -> Result<User, RemoveUserError> {
-        todo!()
+    async fn remove_user(&self, user_id: UserID) -> Result<(), RemoveUserError> {
+        let id: i64 = user_id.into();
+        let query = query(r#"
+                DELETE FROM user
+                WHERE id = $1
+            "#)
+            .bind(id);
+
+        let count = query.execute(&self.pool)
+                         .await
+                         .map_err(|e| RemoveUserError::Unknown(e.to_string()))?
+                         .rows_affected();
+
+        // Verify that we actually removed exactly one user.
+        if count == 1 {
+            Ok(())
+        } else {
+            Err(RemoveUserError::UserNotFound)
+        }
     }
 
-    async fn add_partner(&self, request: &AddPartnerRequest) -> Result<Partner, AddPartnerError> {
-        todo!()
+    async fn set_couple(&self, request: &SetCoupleRequest) -> Result<Couple, SetCoupleError> {
+        // Keep the IDs in ascending order.
+        let user_id_1 = request.user_id_1().clone();
+        let user_id_2 = request.user_id_2().clone();
+        if user_id_1 > user_id_2 {
+            // A destructuring swap.
+            let (user_id_1, user_id_2) = (user_id_2, user_id_1);
+        };
+
+        let id_1: i64 = user_id_1.into();
+        let id_2: i64 = user_id_2.into();
+        let query = query(r#"
+                INSERT INTO couple
+                    (user_id_1, user_id_2)
+                VALUES
+                    ($1, $2)
+            "#)
+            .bind(id_1)
+            .bind(id_2);
+
+        let id = query.execute(&self.pool)
+                      .await
+                      .inspect_err(|e| error!("{}", e))
+                      .map_err(|e| match e.as_database_error() {
+                          Some(e) if e.is_foreign_key_violation() => SetCoupleError::UserNotFound,
+                          _ => SetCoupleError::Unknown(e.to_string()),
+                      })?
+                      .last_insert_rowid();
+
+        Ok(Couple::new(
+            id,
+            user_id_1,
+            user_id_2,
+        ))
     }
 
-    async fn remove_partner(&self, partner_id: PartnerID) -> Result<Partner, RemovePartnerError> {
-        todo!()
+    async fn unset_couple(&self, couple_id: CoupleID) -> Result<(), UnsetCoupleError> {
+        let id: i64 = couple_id.into();
+        let query = query(r#"
+                DELETE FROM couple
+                WHERE id = $1
+            "#)
+            .bind(id);
+
+        let count = query.execute(&self.pool)
+                         .await
+                         .map_err(|e| UnsetCoupleError::Unknown(e.to_string()))?
+                         .rows_affected();
+
+        if count == 1 {
+            Ok(())
+        } else {
+            Err(UnsetCoupleError::CoupleNotFound)
+        }
     }
 
     async fn add_question(&self, request: &AddQuestionRequest) -> Result<Question, AddQuestionError> {
         todo!()
     }
 
-    async fn remove_question(&self, question_id: QuestionID) -> Result<Question, RemoveQuestionError> {
+    async fn remove_question(&self, question_id: QuestionID) -> Result<(), RemoveQuestionError> {
         todo!()
     }
 

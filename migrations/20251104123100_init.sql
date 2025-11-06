@@ -9,13 +9,13 @@ CREATE TABLE IF NOT EXISTS user(
     UNIQUE(username)
 );
 
-CREATE TABLE IF NOT EXISTS partner(
+CREATE TABLE IF NOT EXISTS couple(
     id          INTEGER     PRIMARY KEY,
     user_id_1   INTEGER     NOT NULL,
     user_id_2   INTEGER     NOT NULL,
 
-    FOREIGN KEY(user_id_1) REFERENCES user(id),
-    FOREIGN KEY(user_id_2) REFERENCES user(id)
+    FOREIGN KEY(user_id_1) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id_2) REFERENCES user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS question(
@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS answer(
     timestamp       TEXT        NOT NULL,
     response        BLOB        NOT NULL,
 
-    FOREIGN KEY(question_id) REFERENCES question(id),
-    FOREIGN KEY(user_id) REFERENCES user(id)
+    FOREIGN KEY(question_id) REFERENCES question(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS location(
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS location(
     longitude       REAL        NOT NULL,
     accuracy        INTEGER     NOT NULL,
 
-    FOREIGN KEY(user_id) REFERENCES user(id)
+    FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS heartbeat(
@@ -53,5 +53,5 @@ CREATE TABLE IF NOT EXISTS heartbeat(
     start_timestamp TEXT        NOT NULL,
     end_timestamp   TEXT,       -- NULLABLE
 
-    FOREIGN KEY(user_id) REFERENCES user(id)
+    FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
 );

@@ -11,7 +11,7 @@ use crate::models::data::{
     HeartbeatID,
     Latitude,
     Longitude,
-    Partner,
+    Couple,
     Password,
     QuestionCategory,
     QuestionID,
@@ -54,29 +54,55 @@ pub enum AddUserError {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RemoveUserError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+pub enum RemoveUserError {
+    #[error("could not find corresponding user")]
+    UserNotFound,
+
+    #[error("could not remove user: {0}")]
+    Unknown(String),
+}
 
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct AddPartnerRequest {
+pub struct SetCoupleRequest {
     user_id_1: UserID,
     user_id_2: UserID,
 }
 
-impl AddPartnerRequest {
+impl SetCoupleRequest {
     pub fn new(user_id_1: UserID, user_id_2: UserID) -> Self {
         Self {user_id_1, user_id_2}
+    }
+
+    pub fn user_id_1(&self) -> &UserID {
+        &self.user_id_1
+    }
+
+    pub fn user_id_2(&self) -> &UserID {
+        &self.user_id_2
     }
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum AddPartnerError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+pub enum SetCoupleError {
+    #[error("could not find corresponding user")]
+    UserNotFound,
+
+    #[error("could not set couple: {0}")]
+    Unknown(String),
+}
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RemovePartnerError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+pub enum UnsetCoupleError {
+    #[error("could not find corresponding couple")]
+    CoupleNotFound,
+
+    #[error("could not unset couple: {0}")]
+    Unknown(String),
+}
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -93,11 +119,11 @@ impl AddQuestionRequest {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum AddQuestionError {}
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum RemoveQuestionError {}
 
 
@@ -116,7 +142,7 @@ impl AddAnswerRequest {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum AddAnswerError {}
 
 
@@ -136,7 +162,7 @@ impl AddLocationRequest {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum AddLocationError {}
 
 
@@ -153,7 +179,7 @@ impl StartHeartbeatRequest {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum StartHeartbeatError {}
 
 
@@ -170,5 +196,5 @@ impl EndHeartbeatRequest {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum EndHeartbeatError {}
