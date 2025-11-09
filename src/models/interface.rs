@@ -7,16 +7,13 @@ use thiserror::Error;
 use jiff::Zoned;
 
 use crate::models::data::{
-    HeartbeatID,
     Latitude,
     Longitude,
     Password,
     QuestionCategory,
-    QuestionID,
     Response,
     ResponseType,
     Username,
-    UserID,
 };
 
 
@@ -67,21 +64,21 @@ pub enum RemoveUserError {
 /// Request to associate two users together.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SetCoupleRequest {
-    user_id_1: UserID,
-    user_id_2: UserID,
+    user_id_1: i64,
+    user_id_2: i64,
 }
 
 impl SetCoupleRequest {
-    pub fn new(user_id_1: UserID, user_id_2: UserID) -> Self {
+    pub fn new(user_id_1: i64, user_id_2: i64) -> Self {
         Self {user_id_1, user_id_2}
     }
 
-    pub fn user_id_1(&self) -> &UserID {
-        &self.user_id_1
+    pub fn user_id_1(&self) -> i64 {
+        self.user_id_1
     }
 
-    pub fn user_id_2(&self) -> &UserID {
-        &self.user_id_2
+    pub fn user_id_2(&self) -> i64 {
+        self.user_id_2
     }
 }
 
@@ -133,14 +130,14 @@ pub enum RemoveQuestionError {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AddAnswerRequest {
-    question_id: QuestionID,
-    user_id: UserID,
+    question_id: i64,
+    user_id: i64,
     timestamp: Zoned,
     response: Response,
 }
 
 impl AddAnswerRequest {
-    pub fn new(question_id: QuestionID, user_id: UserID, timestamp: Zoned, response: Response) -> Self {
+    pub fn new(question_id: i64, user_id: i64, timestamp: Zoned, response: Response) -> Self {
         Self {question_id, user_id, timestamp, response}
     }
 }
@@ -152,7 +149,7 @@ pub enum AddAnswerError {}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct AddLocationRequest {
-    user_id: UserID,
+    user_id: i64,
     timestamp: Zoned,
     latitude: Latitude,
     longitude: Longitude,
@@ -160,7 +157,7 @@ pub struct AddLocationRequest {
 }
 
 impl AddLocationRequest {
-    pub fn new(user_id: UserID, timestamp: Zoned, latitude: Latitude, longitude: Longitude, accuracy: usize) -> Self {
+    pub fn new(user_id: i64, timestamp: Zoned, latitude: Latitude, longitude: Longitude, accuracy: usize) -> Self {
         Self {user_id, timestamp, latitude, longitude, accuracy}
     }
 }
@@ -172,12 +169,12 @@ pub enum AddLocationError {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StartHeartbeatRequest {
-    user_id: UserID,
+    user_id: i64,
     start_timestamp: Zoned,
 }
 
 impl StartHeartbeatRequest {
-    pub fn new(user_id: UserID, start_timestamp: Zoned) -> Self {
+    pub fn new(user_id: i64, start_timestamp: Zoned) -> Self {
         Self {user_id, start_timestamp}
     }
 }
@@ -189,12 +186,12 @@ pub enum StartHeartbeatError {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EndHeartbeatRequest {
-    heartbeat_id: HeartbeatID,
+    heartbeat_id: i64,
     end_timestamp: Zoned,
 }
 
 impl EndHeartbeatRequest {
-    pub fn new(heartbeat_id: HeartbeatID, end_timestamp: Zoned) -> Self {
+    pub fn new(heartbeat_id: i64, end_timestamp: Zoned) -> Self {
         Self {heartbeat_id, end_timestamp}
     }
 }

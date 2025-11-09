@@ -25,28 +25,6 @@ use crate::constants::{
 };
 
 
-macro_rules! generate_id {
-    ($name:ident) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct $name(i64);
-
-        impl From<i64> for $name {
-            /// Wrap the provided ID as a `$name`.
-            fn from(raw: i64) -> Self {
-                Self(raw)
-            }
-        }
-
-        impl Into<i64> for $name {
-            /// Unwrap the inner value for encoding purposes/direct use.
-            fn into(self) -> i64 {
-                self.0
-            }
-        }
-    }
-}
-
-
 // --- users ---
 
 /// A single user. `password` is a (salted) Argon2 hash. See individual
@@ -54,11 +32,10 @@ macro_rules! generate_id {
 ///
 /// See the [Ultimate Guide to Rust
 /// Newtypes](https://www.howtocodeit.com/articles/ultimate-guide-rust-newtypes)
-/// for why we do this. IDs and fields that need to be validated are
-/// newtyped.
+/// for why we do this. Fields that need to be validated are newtyped.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct User {
-    id: UserID,
+    id: i64,
     username: Username,
     password: Password,
     // created_at: Zoned,   // TODO: this + additional metadata?
@@ -67,21 +44,15 @@ pub struct User {
 
 impl User {
     /// Create a new user.
-    pub fn new(raw_id: i64, username: Username, password: Password, preferences: UserPreferences) -> Self {
-        let id = UserID::from(raw_id);
+    pub fn new(id: i64, username: Username, password: Password, preferences: UserPreferences) -> Self {
         Self {id, username, password, preferences}
     }
 
     /// Provide access to the corresponding datafield (copied out).
-    pub fn id(self) -> UserID {
+    pub fn id(self) -> i64 {
         self.id
     }
 }
-
-
-// Use the macro defined above to auto-define a `UserID`.
-// Unique identifier for a user, for internal use only.
-generate_id!(UserID);
 
 
 /// Unique identifier for a user, publicly visible.
@@ -212,28 +183,23 @@ impl UserPreferences {
 /// sharing, heartbeats, etc).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Couple {
-    id: CoupleID,
-    user_id_1: UserID,
-    user_id_2: UserID,
+    id: i64,
+    user_id_1: i64,
+    user_id_2: i64,
     // created_at: Zoned,
 }
 
 impl Couple {
     /// Create a new pairing of users.
-    pub fn new(raw_id: i64, user_id_1: UserID, user_id_2: UserID) -> Self {
-        let id = CoupleID::from(raw_id);
+    pub fn new(id: i64, user_id_1: i64, user_id_2: i64) -> Self {
         Self {id, user_id_1, user_id_2}
     }
 
     /// Provide access to the corresponding datafield (copied out).
-    pub fn id(self) -> CoupleID {
+    pub fn id(self) -> i64 {
         self.id
     }
 }
-
-
-// Unique identifier for a couple, internal use only.
-generate_id!(CoupleID);
 
 
 // --- questions ---
@@ -244,15 +210,11 @@ generate_id!(CoupleID);
 /// `ResponseType` for more details.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Question {
-    id: QuestionID,
+    id: i64,
     category: QuestionCategory,
     prompt: String,
     response_type: ResponseType,
 }
-
-
-// Unique identifier for a question, internal only.
-generate_id!(QuestionID);
 
 
 /// A label for grouping questions/what type of topic.
@@ -283,16 +245,12 @@ pub enum ResponseType {
 /// the `Question`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Answer {
-    id: AnswerID,
-    question_id: QuestionID,
-    user_id: UserID,
+    id: i64,
+    question_id: i64,
+    user_id: i64,
     timestamp: Zoned,
     response: Response,
 }
-
-
-// Unique identifier for an answer, internal only.
-generate_id!(AnswerID);
 
 
 // TODO: what to do about this duplication/will it become complicated to
@@ -314,17 +272,13 @@ pub enum Response {
 /// in time).
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Location {
-    id: LocationID,
-    user_id: UserID,
+    id: i64,
+    user_id: i64,
     timestamp: Zoned,
     latitude: Latitude,
     longitude: Longitude,
     accuracy: u32,
 }
-
-
-// Unique identifier for a location, internal only.
-generate_id!(LocationID);
 
 
 /// North-south component of location datapoint.
@@ -353,12 +307,8 @@ pub struct Longitude(f64);
 ///   notifications to their partner (we notify, we don't enable).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Heartbeat {
-    id: HeartbeatID,
-    user_id: UserID,
+    id: i64,
+    user_id: i64,
     start_timestamp: Zoned,
     end_timestamp: Option<Zoned>,
 }
-
-
-// Unique identifier for a heartbeat, internal only.
-generate_id!(HeartbeatID);

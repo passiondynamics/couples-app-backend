@@ -27,10 +27,8 @@ use models::interface::{
 };
 use models::data::{
     Couple,
-    CoupleID,
     Password,
     Username,
-    UserID,
 };
 
 
@@ -64,11 +62,11 @@ async fn main() -> Result<()> {
     }
     info!("{:?}", users);
 
-    let set_couple_request = SetCoupleRequest::new(UserID::from(1), UserID::from(2));
+    let set_couple_request = SetCoupleRequest::new(1, 2);
     let partner = sqlite.set_couple(&set_couple_request).await?;
     info!("{:?}", partner);
 
-    sqlite.remove_user(UserID::from(1)).await?;
+    sqlite.remove_user(1).await?;
 
     */
     // --- TODO: temporary ---

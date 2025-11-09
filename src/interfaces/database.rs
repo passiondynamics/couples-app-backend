@@ -34,11 +34,8 @@ use crate::models::data::{
     Heartbeat,
     Location,
     Couple,
-    CoupleID,
     Question,
-    QuestionID,
     User,
-    UserID,
     UserPreferences,
 };
 use crate::models::interface::{
@@ -68,19 +65,19 @@ pub trait DatabaseInterface: Clone + Send + Sync + 'static {
     fn add_user(&self, request: &AddUserRequest) -> impl Future<Output = Result<User, AddUserError>> + Send;
 
     /// Remove a given user from the database.
-    fn remove_user(&self, user_id: UserID) -> impl Future<Output = Result<(), RemoveUserError>> + Send;
+    fn remove_user(&self, user_id: i64) -> impl Future<Output = Result<(), RemoveUserError>> + Send;
 
     /// Associate two users together as a couple.
     fn set_couple(&self, request: &SetCoupleRequest) -> impl Future<Output = Result<Couple, SetCoupleError>> + Send;
 
     /// Disassociate the given couple from each other.
-    fn unset_couple(&self, couple_id: CoupleID) -> impl Future<Output = Result<(), UnsetCoupleError>> + Send;
+    fn unset_couple(&self, couple_id: i64) -> impl Future<Output = Result<(), UnsetCoupleError>> + Send;
 
     /// Add a new question.
     fn add_question(&self, request: &AddQuestionRequest) -> impl Future<Output = Result<Question, AddQuestionError>> + Send;
 
     /// Remove a given question.
-    fn remove_question(&self, question_id: QuestionID) -> impl Future<Output = Result<(), RemoveQuestionError>> + Send;
+    fn remove_question(&self, question_id: i64) -> impl Future<Output = Result<(), RemoveQuestionError>> + Send;
 
     /// Add a new answer.
     fn add_answer(&self, request: &AddAnswerRequest) -> impl Future<Output = Result<Answer, AddAnswerError>> + Send;
@@ -215,14 +212,13 @@ impl DatabaseInterface for SQLiteInterface {
     //   .map_err(|_| AddUserError::TransactionCommit)?;
 
 
-    async fn remove_user(&self, user_id: UserID) -> Result<(), RemoveUserError> {
+    async fn remove_user(&self, user_id: i64) -> Result<(), RemoveUserError> {
         // Use given user ID/primary key to build a delete statement.
-        let id: i64 = user_id.into();
         let query = query(r#"
                 DELETE FROM user
                 WHERE id = $1
             "#)
-            .bind(id);
+            .bind(user_id);
 
         let count = query.execute(&self.pool)
                          .await
@@ -238,24 +234,22 @@ impl DatabaseInterface for SQLiteInterface {
     }
 
     async fn set_couple(&self, request: &SetCoupleRequest) -> Result<Couple, SetCoupleError> {
-        let user_id_1 = request.user_id_1().clone();
-        let user_id_2 = request.user_id_2().clone();
+        let user_id_1 = request.user_id_1();
+        let user_id_2 = request.user_id_2();
 
         // Keep the IDs in ascending order using a destructuring swap.
         if user_id_1 > user_id_2 {
             let (user_id_1, user_id_2) = (user_id_2, user_id_1);
         };
 
-        let id_1: i64 = user_id_1.into();
-        let id_2: i64 = user_id_2.into();
         let query = query(r#"
                 INSERT INTO couple
                     (user_id_1, user_id_2)
                 VALUES
                     ($1, $2)
             "#)
-            .bind(id_1)
-            .bind(id_2);
+            .bind(user_id_1)
+            .bind(user_id_2);
 
         let id = query.execute(&self.pool)
                       .await
@@ -274,13 +268,12 @@ impl DatabaseInterface for SQLiteInterface {
         ))
     }
 
-    async fn unset_couple(&self, couple_id: CoupleID) -> Result<(), UnsetCoupleError> {
-        let id: i64 = couple_id.into();
+    async fn unset_couple(&self, couple_id: i64) -> Result<(), UnsetCoupleError> {
         let query = query(r#"
                 DELETE FROM couple
                 WHERE id = $1
             "#)
-            .bind(id);
+            .bind(couple_id);
 
         let count = query.execute(&self.pool)
                          .await
@@ -298,7 +291,7 @@ impl DatabaseInterface for SQLiteInterface {
         todo!()
     }
 
-    async fn remove_question(&self, question_id: QuestionID) -> Result<(), RemoveQuestionError> {
+    async fn remove_question(&self, question_id: i64) -> Result<(), RemoveQuestionError> {
         todo!()
     }
 
