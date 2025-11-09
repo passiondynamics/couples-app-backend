@@ -1,15 +1,15 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 1:51pm
 //! Description: Starts up services (bootstrapping with corresponding
-//!              interfaces). Just setup/kicking off the backend, nothing
-//!              else.
+//! interfaces). Just setup/kicking off the backend, nothing else.
 
 use anyhow::Result;
 use tracing::info;
 
 mod constants;
 mod interfaces;
-use interfaces::SqliteInterface;
+use interfaces::database::SQLiteInterface;
+use interfaces::http::HTTPInterface;
 mod models;
 use models::config::{
     Config,
@@ -17,9 +17,10 @@ use models::config::{
 mod services;
 use services::{
     LogService,
+    CouplesAppService,
 };
 
-use interfaces::DatabaseInterface;
+use interfaces::database::DatabaseInterface;
 use models::interface::{
     AddUserRequest,
     SetCoupleRequest,
@@ -33,14 +34,25 @@ use models::data::{
 };
 
 
+/// Set up application from the inside -> outward, and start.
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Miscellaneous components, independent of the main flow of data.
     LogService::init();
 
     let config = Config::from_env();
     info!("{:#?}", config);
 
-    let sqlite = SqliteInterface::new(&config).await?;
+    // Main flow of data (http -> core service -> database); we initialize
+    // from the bottom upwards (in other words, at the innermost and work
+    // our way out).
+    let sqlite = SQLiteInterface::new(&config).await?;
+    let app = CouplesAppService::new(sqlite);
+    let http = HTTPInterface::new(&config, app).await?;
+
+    // --- TODO: temporary ---
+    /*
+
     let mut users = vec![];
     let data = [("irith", "testpassword"), ("vickivic", "testpassword")];
 
@@ -57,6 +69,9 @@ async fn main() -> Result<()> {
     info!("{:?}", partner);
 
     sqlite.remove_user(UserID::from(1)).await?;
+
+    */
+    // --- TODO: temporary ---
 
     Ok(())
 }

@@ -1,18 +1,14 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 6:47pm
-//! Description: Translation layers from intent (upstairs from a given
-//!              service) to details of making it happen (downstairs in
-//!              the data storage, or with an API, or just *somewhere
-//!              else*).
+//! Description: Translation layer for data storage from intent (upstairs
+//! from a given service) to data change actions/details of making it
+//! happen (downstairs in the database).
 
 use anyhow::{
     Context,
     Result,
 };
-use sqlx::{
-    query,
-    Executor,
-};
+use sqlx::query;
 use sqlx::migrate::{
     MigrateDatabase,
     Migrator,
@@ -23,14 +19,9 @@ use sqlx::sqlite::{
     SqliteJournalMode,
     SqlitePool,
 };
-use tracing::{
-    debug,
-    error,
-    info,
-};
+use tracing::info;
 
 use std::fs;
-use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::constants::{
@@ -71,6 +62,7 @@ use crate::models::interface::{
 };
 
 
+/// A data storage access layer for the app that can be sent over threads.
 pub trait DatabaseInterface: Clone + Send + Sync + 'static {
     /// Create a new user in the database.
     fn add_user(&self, request: &AddUserRequest) -> impl Future<Output = Result<User, AddUserError>> + Send;
@@ -110,12 +102,14 @@ pub trait DatabaseInterface: Clone + Send + Sync + 'static {
 }
 
 
+/// An implementation of (outgoing) data storage access to a SQLite
+/// database to dictate data change actions.
 #[derive(Debug, Clone)]
-pub struct SqliteInterface {
+pub struct SQLiteInterface {
     pool: SqlitePool,
 }
 
-impl SqliteInterface {
+impl SQLiteInterface {
     /// Create a new database if not already present, set up a connection
     /// pool, and update the schema if needed.
     pub async fn new(config: &Config) -> Result<Self> {
@@ -139,7 +133,9 @@ impl SqliteInterface {
         info!("Opened sqlite database @ `{}`", url);
 
         let sqlite = Self {pool};
-        sqlite.validate_schema(config).await.with_context(|| "could not validate schema")?;
+        sqlite.validate_schema(config)
+              .await
+              .with_context(|| "could not validate schema")?;
 
         Ok(sqlite)
     }
@@ -159,14 +155,16 @@ impl SqliteInterface {
             .with_context(|| "could not create migrator")?
             .run(&self.pool)
             .await
-            .with_context(|| "could not run migrator")
+            .with_context(|| "could not run migrator")?;
+
+        Ok(())
     }
 }
 
-impl DatabaseInterface for SqliteInterface {
+impl DatabaseInterface for SQLiteInterface {
     async fn add_user(&self, request: &AddUserRequest) -> Result<User, AddUserError> {
         // Use request + defaults from `UserPreferences` to build an
-        // insert query.
+        // insert statement.
         let username = request.username().clone();
         let password = request.password().clone();
         let preferences = UserPreferences::new();
@@ -187,11 +185,16 @@ impl DatabaseInterface for SqliteInterface {
         let id = query.execute(&self.pool)
                       .await
                       .map_err(|e| match e.as_database_error() {
+                          // If our `username` constraint is violated.
                           Some(e) if e.is_unique_violation() => AddUserError::UsernameExists(username.as_str().to_string()),
+
+                          // Otherwise it's an issue with the statement
+                          // itself.
                           _ => AddUserError::Unknown(e.to_string()),
                       })?
                       .last_insert_rowid();
 
+        // Return a corresponding user object.
         Ok(User::new(
             id,
             username,
@@ -213,6 +216,7 @@ impl DatabaseInterface for SqliteInterface {
 
 
     async fn remove_user(&self, user_id: UserID) -> Result<(), RemoveUserError> {
+        // Use given user ID/primary key to build a delete statement.
         let id: i64 = user_id.into();
         let query = query(r#"
                 DELETE FROM user
@@ -234,11 +238,11 @@ impl DatabaseInterface for SqliteInterface {
     }
 
     async fn set_couple(&self, request: &SetCoupleRequest) -> Result<Couple, SetCoupleError> {
-        // Keep the IDs in ascending order.
         let user_id_1 = request.user_id_1().clone();
         let user_id_2 = request.user_id_2().clone();
+
+        // Keep the IDs in ascending order using a destructuring swap.
         if user_id_1 > user_id_2 {
-            // A destructuring swap.
             let (user_id_1, user_id_2) = (user_id_2, user_id_1);
         };
 
@@ -255,8 +259,9 @@ impl DatabaseInterface for SqliteInterface {
 
         let id = query.execute(&self.pool)
                       .await
-                      .inspect_err(|e| error!("{}", e))
                       .map_err(|e| match e.as_database_error() {
+                          // Either the `user_id_1` or `user_id_2` foreign
+                          // key constraint failed.
                           Some(e) if e.is_foreign_key_violation() => SetCoupleError::UserNotFound,
                           _ => SetCoupleError::Unknown(e.to_string()),
                       })?

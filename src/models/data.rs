@@ -1,7 +1,7 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 1:51pm
 //! Description: The persistent storage component, what data we want to
-//!              save long-term.
+//! save long-term.
 
 use argon2::{
     Algorithm,
@@ -23,6 +23,28 @@ use crate::constants::{
     get_username_regex,
     MIN_PASSWORD_LEN,
 };
+
+
+macro_rules! generate_id {
+    ($name:ident) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $name(i64);
+
+        impl From<i64> for $name {
+            /// Wrap the provided ID as a `$name`.
+            fn from(raw: i64) -> Self {
+                Self(raw)
+            }
+        }
+
+        impl Into<i64> for $name {
+            /// Unwrap the inner value for encoding purposes/direct use.
+            fn into(self) -> i64 {
+                self.0
+            }
+        }
+    }
+}
 
 
 // --- users ---
@@ -50,27 +72,16 @@ impl User {
         Self {id, username, password, preferences}
     }
 
+    /// Provide access to the corresponding datafield (copied out).
     pub fn id(self) -> UserID {
         self.id
     }
 }
 
 
-/// Unique identifier for a user, for internal use only.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UserID(i64);
-
-impl From<i64> for UserID {
-    fn from(raw: i64) -> Self {
-        Self(raw)
-    }
-}
-
-impl Into<i64> for UserID {
-    fn into(self) -> i64 {
-        self.0
-    }
-}
+// Use the macro defined above to auto-define a `UserID`.
+// Unique identifier for a user, for internal use only.
+generate_id!(UserID);
 
 
 /// Unique identifier for a user, publicly visible.
@@ -89,6 +100,7 @@ impl Username {
         }
     }
 
+    /// Get a reference to the inner value for encoding purposes.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -118,7 +130,7 @@ impl Password {
             Algorithm::default(),
             Version::default(),
             Params::default(),
-            // TODO: add pepper.
+            // TODO: move outside and add pepper.
         );
         let salt = SaltString::generate(&mut OsRng);
         let hash = argon2.hash_password(raw.as_bytes(), &salt)
@@ -128,6 +140,7 @@ impl Password {
         Ok(Self(hash))
     }
 
+    /// Get a reference to the inner value for encoding purposes.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -176,14 +189,17 @@ impl UserPreferences {
         }
     }
 
+    /// Provide access to the corresponding datafield (copied out).
     pub fn new_feature_notifications(&self) -> bool {
         self.new_feature_notifications
     }
 
+    /// Provide access to the corresponding datafield (copied out).
     pub fn location_history(&self) -> u32 {
         self.location_history
     }
 
+    /// Provide access to the corresponding datafield (copied out).
     pub fn heartbeat_history(&self) -> u32 {
         self.heartbeat_history
     }
@@ -203,32 +219,21 @@ pub struct Couple {
 }
 
 impl Couple {
+    /// Create a new pairing of users.
     pub fn new(raw_id: i64, user_id_1: UserID, user_id_2: UserID) -> Self {
         let id = CoupleID::from(raw_id);
         Self {id, user_id_1, user_id_2}
     }
 
-    pub fn id(&self) -> &CoupleID {
-        &self.id
+    /// Provide access to the corresponding datafield (copied out).
+    pub fn id(self) -> CoupleID {
+        self.id
     }
 }
 
 
-/// Unique identifier for a couple, internal use only.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CoupleID(i64);
-
-impl From<i64> for CoupleID {
-    fn from(raw: i64) -> Self {
-        Self(raw)
-    }
-}
-
-impl Into<i64> for CoupleID {
-    fn into(self) -> i64 {
-        self.0
-    }
-}
+// Unique identifier for a couple, internal use only.
+generate_id!(CoupleID);
 
 
 // --- questions ---
@@ -246,9 +251,8 @@ pub struct Question {
 }
 
 
-/// Unique identifier for a question, internal only.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct QuestionID(i64);
+// Unique identifier for a question, internal only.
+generate_id!(QuestionID);
 
 
 /// A label for grouping questions/what type of topic.
@@ -287,9 +291,8 @@ pub struct Answer {
 }
 
 
-/// Unique identifier for an answer, internal only.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct AnswerID(i64);
+// Unique identifier for an answer, internal only.
+generate_id!(AnswerID);
 
 
 // TODO: what to do about this duplication/will it become complicated to
@@ -320,9 +323,8 @@ pub struct Location {
 }
 
 
-/// Unique identifier for a location, internal only.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LocationID(i64);
+// Unique identifier for a location, internal only.
+generate_id!(LocationID);
 
 
 /// North-south component of location datapoint.
@@ -358,6 +360,5 @@ pub struct Heartbeat {
 }
 
 
-/// Unique identifier for a heartbeat, internal only.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct HeartbeatID(i64);
+// Unique identifier for a heartbeat, internal only.
+generate_id!(HeartbeatID);

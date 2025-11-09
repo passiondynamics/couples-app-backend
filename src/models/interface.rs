@@ -1,8 +1,7 @@
 //! Author: irith
 //! Date: 2025-11-03 @ 6:59pm
 //! Description: Describes what changes can be made to the data through
-//!              the interfaces (and what info is needed to make those
-//!              changes).
+//! the interfaces (and what info is needed to make those changes).
 
 use thiserror::Error;
 use jiff::Zoned;
@@ -11,18 +10,17 @@ use crate::models::data::{
     HeartbeatID,
     Latitude,
     Longitude,
-    Couple,
     Password,
     QuestionCategory,
     QuestionID,
     Response,
     ResponseType,
-    User,
     Username,
     UserID,
 };
 
 
+/// Request used to add a new user.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AddUserRequest {
     username: Username,
@@ -44,6 +42,7 @@ impl AddUserRequest {
 }
 
 
+/// Errors when adding a user.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum AddUserError {
     #[error("username already exists: `{0}`")]
@@ -54,6 +53,7 @@ pub enum AddUserError {
 }
 
 
+/// Errors when removing a user.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum RemoveUserError {
     #[error("could not find corresponding user")]
@@ -64,6 +64,7 @@ pub enum RemoveUserError {
 }
 
 
+/// Request to associate two users together.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SetCoupleRequest {
     user_id_1: UserID,
@@ -85,6 +86,7 @@ impl SetCoupleRequest {
 }
 
 
+/// Errors when associating users together.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum SetCoupleError {
     #[error("could not find corresponding user")]
@@ -95,6 +97,7 @@ pub enum SetCoupleError {
 }
 
 
+/// Errors when disassociating users from each other.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum UnsetCoupleError {
     #[error("could not find corresponding couple")]
@@ -105,6 +108,7 @@ pub enum UnsetCoupleError {
 }
 
 
+/// TODO
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AddQuestionRequest {
     category: QuestionCategory,

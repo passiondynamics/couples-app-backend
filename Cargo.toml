@@ -5,9 +5,12 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0"
+axum = "0.8"
+http = "1.3"
 jiff = "0.2"
 regex = "1.12"
 thiserror = "2.0"
+tower = "0.5"
 tracing = "0.1"
 
   [dependencies.argon2]
@@ -22,6 +25,12 @@ tracing = "0.1"
     "macros",
     "runtime-tokio",
     "sqlite",
+  ]
+
+  [dependencies.tower-http]
+  version = "0.6"
+  features = [
+    "trace"
   ]
 
   [dependencies.tokio]
