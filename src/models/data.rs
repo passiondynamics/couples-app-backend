@@ -14,6 +14,7 @@ use argon2::password_hash::{
     PasswordHasher,
     SaltString,
 };
+use derive_getters::Getters;
 use jiff::Zoned;
 use thiserror::Error;
 
@@ -33,8 +34,9 @@ use crate::constants::{
 /// See the [Ultimate Guide to Rust
 /// Newtypes](https://www.howtocodeit.com/articles/ultimate-guide-rust-newtypes)
 /// for why we do this. Fields that need to be validated are newtyped.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
 pub struct User {
+    #[getter(copy)]
     id: i64,
     username: Username,
     password: Password,
@@ -46,11 +48,6 @@ impl User {
     /// Create a new user.
     pub fn new(id: i64, username: Username, password: Password, preferences: UserPreferences) -> Self {
         Self {id, username, password, preferences}
-    }
-
-    /// Provide access to the corresponding datafield (copied out).
-    pub fn id(self) -> i64 {
-        self.id
     }
 }
 
@@ -142,10 +139,15 @@ pub enum PasswordError {
 /// into the sqlite DB makes that tricky, so until you find a valid
 /// use-case for keeping more than 4_294_967_295 records, we're stuck with
 /// this.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
 pub struct UserPreferences {
+    #[getter(copy)]
     new_feature_notifications: bool,
+
+    #[getter(copy)]
     location_history: u32,  // TODO: validated field, should be newtyped?
+
+    #[getter(copy)]
     heartbeat_history: u32,
 }
 
@@ -159,21 +161,6 @@ impl UserPreferences {
             heartbeat_history: 0,
         }
     }
-
-    /// Provide access to the corresponding datafield (copied out).
-    pub fn new_feature_notifications(&self) -> bool {
-        self.new_feature_notifications
-    }
-
-    /// Provide access to the corresponding datafield (copied out).
-    pub fn location_history(&self) -> u32 {
-        self.location_history
-    }
-
-    /// Provide access to the corresponding datafield (copied out).
-    pub fn heartbeat_history(&self) -> u32 {
-        self.heartbeat_history
-    }
 }
 
 
@@ -181,10 +168,15 @@ impl UserPreferences {
 
 /// A paired set of users. Foundation for everything else (Q&A, location
 /// sharing, heartbeats, etc).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
 pub struct Couple {
+    #[getter(copy)]
     id: i64,
+
+    #[getter(copy)]
     user_id_1: i64,
+
+    #[getter(copy)]
     user_id_2: i64,
     // created_at: Zoned,
 }
@@ -193,11 +185,6 @@ impl Couple {
     /// Create a new pairing of users.
     pub fn new(id: i64, user_id_1: i64, user_id_2: i64) -> Self {
         Self {id, user_id_1, user_id_2}
-    }
-
-    /// Provide access to the corresponding datafield (copied out).
-    pub fn id(self) -> i64 {
-        self.id
     }
 }
 

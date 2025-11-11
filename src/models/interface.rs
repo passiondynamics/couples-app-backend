@@ -4,6 +4,7 @@
 //! the interfaces (and what info is needed to make those changes).
 
 use thiserror::Error;
+use derive_getters::Getters;
 use jiff::Zoned;
 
 use crate::models::data::{
@@ -18,7 +19,7 @@ use crate::models::data::{
 
 
 /// Request used to add a new user.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
 pub struct AddUserRequest {
     username: Username,
     password: Password,
@@ -27,14 +28,6 @@ pub struct AddUserRequest {
 impl AddUserRequest {
     pub fn new(username: Username, password: Password) -> Self {
         Self {username, password}
-    }
-
-    pub fn username(&self) -> &Username {
-        &self.username
-    }
-
-    pub fn password(&self) -> &Password {
-        &self.password
     }
 }
 
@@ -62,23 +55,18 @@ pub enum RemoveUserError {
 
 
 /// Request to associate two users together.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
 pub struct SetCoupleRequest {
+    #[getter(copy)]
     user_id_1: i64,
+
+    #[getter(copy)]
     user_id_2: i64,
 }
 
 impl SetCoupleRequest {
     pub fn new(user_id_1: i64, user_id_2: i64) -> Self {
         Self {user_id_1, user_id_2}
-    }
-
-    pub fn user_id_1(&self) -> i64 {
-        self.user_id_1
-    }
-
-    pub fn user_id_2(&self) -> i64 {
-        self.user_id_2
     }
 }
 
