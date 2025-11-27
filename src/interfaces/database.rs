@@ -22,6 +22,7 @@ use sqlx::sqlite::{
 use tracing::info;
 
 use std::fs;
+use std::mem::swap;
 use std::str::FromStr;
 
 use crate::constants::{
@@ -237,12 +238,12 @@ impl DatabaseInterface for SQLiteInterface {
     }
 
     async fn set_couple(&self, request: &SetCoupleRequest) -> Result<Couple, SetCoupleError> {
-        let user_id_1 = request.user_id_1();
-        let user_id_2 = request.user_id_2();
+        let mut user_id_1 = request.user_id_1();
+        let mut user_id_2 = request.user_id_2();
 
-        // Keep the IDs in ascending order using a destructuring swap.
+        // Keep the IDs in ascending order.
         if user_id_1 > user_id_2 {
-            let (user_id_1, user_id_2) = (user_id_2, user_id_1);
+            swap(&mut user_id_1, &mut user_id_2);
         };
 
         let query = query(r#"

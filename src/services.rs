@@ -82,7 +82,7 @@ pub trait AppService: Clone + Send + Sync + 'static {
     /// Create a new user.
     fn add_user(&self, request: &AddUserRequest) -> impl Future<Output = Result<User, AddUserError>> + Send;
 
-    /// Remove a given user from the database.
+    /// Remove a given user.
     fn remove_user(&self, request: &RemoveUserRequest) -> impl Future<Output = Result<(), RemoveUserError>> + Send;
 
     /// Associate two users together as a couple.

@@ -76,6 +76,12 @@ impl Username {
 
 
 /// Error for not meeting username standards.
+///
+/// We use `AutoIntoResponse` to make it easy to propagate an error up and
+/// out of the app. For example, if `Username` validation fails, we
+/// propagate this error type back up a few layers to the HTTP handler,
+/// which uses the `IntoResponse` implementation to return a 422 status
+/// code with that same error message defined below.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 #[error("username does not meet minimum requirements: `{0}`")]
 #[auto_into_response(StatusCode::UNPROCESSABLE_ENTITY, true)]
@@ -117,6 +123,14 @@ impl Password {
 
 
 /// Errors for not meeting password standards or hashing issues.
+///
+/// This `AutoIntoResponse` has a variant where the implementation has
+/// `is_transparent` set to `false`, so instead of using the error message
+/// associated with that variant, we obscure it and instead use a generic
+/// message. We don't want to give our users long error traces about how
+/// the database query had a syntax error, for example (what're they gonna
+/// do with that info?), but we do still want our admin to be able to
+/// debug it :).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum PasswordError {
     #[error("password does not meet minimum length requirements")]

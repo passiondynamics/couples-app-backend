@@ -61,6 +61,12 @@ generate_response!(HTTPErrorResponse, error);
 // --- http + database ---
 
 /// Request used to add a new user.
+///
+/// We use `AutoDeserialize` here since we have field types that have
+/// validation logic. That generated `try_from` method propagates errors
+/// thrown by each of those types when validation fails (for example, if
+/// validation fails for making a new `Username`, `try_from` propagates an
+/// `InvalidUsernameError`).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew, AutoDeserialize)]
 pub struct AddUserRequest {
     #[auto_deserialize(String)]
@@ -105,7 +111,7 @@ pub enum RemoveUserError {
 
 
 /// Request to associate two users together.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Getters, AutoNew)]
 pub struct SetCoupleRequest {
     #[getter(copy)]
     user_id_1: i64,
@@ -116,18 +122,20 @@ pub struct SetCoupleRequest {
 
 
 /// Errors when associating users together.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum SetCoupleError {
     #[error("could not find corresponding user")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
     UserNotFound,
 
     #[error("could not set couple: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
     Unknown(String),
 }
 
 
 /// Request to disassociate users from each other.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Getters, AutoNew)]
 pub struct UnsetCoupleRequest {
     #[getter(copy)]
     couple_id: i64,
@@ -135,17 +143,18 @@ pub struct UnsetCoupleRequest {
 
 
 /// Errors when disassociating users from each other.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum UnsetCoupleError {
     #[error("could not find corresponding couple")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
     CoupleNotFound,
 
     #[error("could not unset couple: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
     Unknown(String),
 }
 
 
-/// TODO
 #[derive(Debug, Clone, PartialEq, Eq, Hash, AutoNew)]
 pub struct AddQuestionRequest {
     category: QuestionCategory,
