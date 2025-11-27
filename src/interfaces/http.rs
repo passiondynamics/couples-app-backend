@@ -7,14 +7,8 @@ use anyhow::{
     Result,
 };
 use axum::{
-    body::Body,
-    routing::{
-//        delete,
-        get,
-        post,
-//        put,
-    },
     Router,
+    body::Body,
 };
 use http::{
     Request,
@@ -32,10 +26,7 @@ use tracing::{
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::interfaces::http::handlers::{
-    add_user,
-    health,
-};
+use crate::interfaces::http::handlers::generate_routes;
 use crate::models::config::Config;
 use crate::services::AppService;
 
@@ -84,11 +75,9 @@ impl HTTPInterface {
 
         let app = Arc::new(raw_app);
         let app_state = AppState {app};
-        let router = Router::new()
-                            .route("/health", get(health))
-                            .route("/add_user", post(add_user))
-                            .layer(middleware)
-                            .with_state(app_state);
+        let router = generate_routes()
+                     .layer(middleware)
+                     .with_state(app_state);
         let listener = TcpListener::bind(("0.0.0.0", config.port))
                                    .await
                                    .with_context(|| "could not bind listener")?;
@@ -106,7 +95,7 @@ impl HTTPInterface {
         //                    }); // Type hints are too complicated to move into `http::init`. 
         axum::serve(self.listener, self.router)
              .await
-             .with_context(|| "could not server on HTTP interface")?;
+             .with_context(|| "could not serve on HTTP interface")?;
 
         Ok(())
     }

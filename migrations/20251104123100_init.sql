@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS user(
-    id                          INTEGER     PRIMARY KEY,
+    id                          INTEGER     PRIMARY KEY     AUTOINCREMENT,
     username                    TEXT        NOT NULL,
     password                    TEXT        NOT NULL,
     new_feature_notifications   INTEGER     NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS user(
 );
 
 CREATE TABLE IF NOT EXISTS couple(
-    id          INTEGER     PRIMARY KEY,
+    id          INTEGER     PRIMARY KEY     AUTOINCREMENT,
     user_id_1   INTEGER     NOT NULL,
     user_id_2   INTEGER     NOT NULL,
 
@@ -19,14 +19,14 @@ CREATE TABLE IF NOT EXISTS couple(
 );
 
 CREATE TABLE IF NOT EXISTS question(
-    id              INTEGER     PRIMARY KEY,
+    id              INTEGER     PRIMARY KEY     AUTOINCREMENT,
     category        INTEGER     NOT NULL,
     prompt          TEXT        NOT NULL,
     response_type   BLOB        NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS answer(
-    id              INTEGER     PRIMARY KEY,
+    id              INTEGER     PRIMARY KEY     AUTOINCREMENT,
     question_id     INTEGER     NOT NULL,
     user_id         INTEGER     NOT NULL,
     timestamp       TEXT        NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS answer(
 );
 
 CREATE TABLE IF NOT EXISTS location(
-    id              INTEGER     PRIMARY KEY,
+    id              INTEGER     PRIMARY KEY     AUTOINCREMENT,
     user_id         INTEGER     NOT NULL,
     timestamp       TEXT        NOT NULL,
     latitude        REAL        NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS location(
 );
 
 CREATE TABLE IF NOT EXISTS heartbeat(
-    id              INTEGER     PRIMARY KEY,
+    id              INTEGER     PRIMARY KEY     AUTOINCREMENT,
     user_id         INTEGER     NOT NULL,
     start_timestamp TEXT        NOT NULL,
     end_timestamp   TEXT,       -- NULLABLE

@@ -49,12 +49,15 @@ use crate::models::interface::{
     AddUserRequest,
     EndHeartbeatError,
     EndHeartbeatRequest,
+    RemoveQuestionRequest,
     RemoveQuestionError,
+    RemoveUserRequest,
     RemoveUserError,
     SetCoupleError,
     SetCoupleRequest,
     StartHeartbeatError,
     StartHeartbeatRequest,
+    UnsetCoupleRequest,
     UnsetCoupleError,
 };
 
@@ -65,19 +68,19 @@ pub trait DatabaseInterface: Clone + Send + Sync + 'static {
     fn add_user(&self, request: &AddUserRequest) -> impl Future<Output = Result<User, AddUserError>> + Send;
 
     /// Remove a given user from the database.
-    fn remove_user(&self, user_id: i64) -> impl Future<Output = Result<(), RemoveUserError>> + Send;
+    fn remove_user(&self, request: &RemoveUserRequest) -> impl Future<Output = Result<(), RemoveUserError>> + Send;
 
     /// Associate two users together as a couple.
     fn set_couple(&self, request: &SetCoupleRequest) -> impl Future<Output = Result<Couple, SetCoupleError>> + Send;
 
     /// Disassociate the given couple from each other.
-    fn unset_couple(&self, couple_id: i64) -> impl Future<Output = Result<(), UnsetCoupleError>> + Send;
+    fn unset_couple(&self, request: &UnsetCoupleRequest) -> impl Future<Output = Result<(), UnsetCoupleError>> + Send;
 
     /// Add a new question.
     fn add_question(&self, request: &AddQuestionRequest) -> impl Future<Output = Result<Question, AddQuestionError>> + Send;
 
     /// Remove a given question.
-    fn remove_question(&self, question_id: i64) -> impl Future<Output = Result<(), RemoveQuestionError>> + Send;
+    fn remove_question(&self, request: &RemoveQuestionRequest) -> impl Future<Output = Result<(), RemoveQuestionError>> + Send;
 
     /// Add a new answer.
     fn add_answer(&self, request: &AddAnswerRequest) -> impl Future<Output = Result<Answer, AddAnswerError>> + Send;
@@ -212,13 +215,13 @@ impl DatabaseInterface for SQLiteInterface {
     //   .map_err(|_| AddUserError::TransactionCommit)?;
 
 
-    async fn remove_user(&self, user_id: i64) -> Result<(), RemoveUserError> {
+    async fn remove_user(&self, request: &RemoveUserRequest) -> Result<(), RemoveUserError> {
         // Use given user ID/primary key to build a delete statement.
         let query = query(r#"
                 DELETE FROM user
                 WHERE id = $1
             "#)
-            .bind(user_id);
+            .bind(request.user_id());
 
         let count = query.execute(&self.pool)
                          .await
@@ -268,12 +271,12 @@ impl DatabaseInterface for SQLiteInterface {
         ))
     }
 
-    async fn unset_couple(&self, couple_id: i64) -> Result<(), UnsetCoupleError> {
+    async fn unset_couple(&self, request: &UnsetCoupleRequest) -> Result<(), UnsetCoupleError> {
         let query = query(r#"
                 DELETE FROM couple
                 WHERE id = $1
             "#)
-            .bind(couple_id);
+            .bind(request.couple_id());
 
         let count = query.execute(&self.pool)
                          .await
@@ -291,7 +294,7 @@ impl DatabaseInterface for SQLiteInterface {
         todo!()
     }
 
-    async fn remove_question(&self, question_id: i64) -> Result<(), RemoveQuestionError> {
+    async fn remove_question(&self, request: &RemoveQuestionRequest) -> Result<(), RemoveQuestionError> {
         todo!()
     }
 

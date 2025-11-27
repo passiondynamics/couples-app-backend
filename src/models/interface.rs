@@ -5,8 +5,12 @@
 
 use axum::response::IntoResponse;
 use derive_getters::Getters;
+use http::StatusCode;
 use jiff::Zoned;
-use serde::Serialize;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
 use crate::models::data::{
@@ -18,6 +22,12 @@ use crate::models::data::{
     QuestionCategory,
     Username,
 };
+use util_macros::{
+    AutoDeserialize,
+    AutoIntoResponse,
+    AutoNew,
+};
+
 
 // --- http only ---
 
@@ -51,55 +61,57 @@ generate_response!(HTTPErrorResponse, error);
 // --- http + database ---
 
 /// Request used to add a new user.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew, AutoDeserialize)]
 pub struct AddUserRequest {
+    #[auto_deserialize(String)]
     username: Username,
+    #[auto_deserialize(String)]
     password: Password,
-}
-
-impl AddUserRequest {
-    pub fn new(username: Username, password: Password) -> Self {
-        Self {username, password}
-    }
 }
 
 
 /// Errors when adding a user.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum AddUserError {
     #[error("username already exists: `{0}`")]
+    #[auto_into_response(StatusCode::CONFLICT, true)]
     UsernameExists(String),
 
     #[error("could not insert user: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
     Unknown(String),
 }
 
 
+/// Request to remove an existing user.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Getters, AutoNew)]
+pub struct RemoveUserRequest {
+    #[getter(copy)]
+    user_id: i64,
+}
+
+
 /// Errors when removing a user.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum RemoveUserError {
     #[error("could not find corresponding user")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
     UserNotFound,
 
     #[error("could not remove user: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
     Unknown(String),
 }
 
 
 /// Request to associate two users together.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
 pub struct SetCoupleRequest {
     #[getter(copy)]
     user_id_1: i64,
 
     #[getter(copy)]
     user_id_2: i64,
-}
-
-impl SetCoupleRequest {
-    pub fn new(user_id_1: i64, user_id_2: i64) -> Self {
-        Self {user_id_1, user_id_2}
-    }
 }
 
 
@@ -111,6 +123,14 @@ pub enum SetCoupleError {
 
     #[error("could not set couple: {0}")]
     Unknown(String),
+}
+
+
+/// Request to disassociate users from each other.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
+pub struct UnsetCoupleRequest {
+    #[getter(copy)]
+    couple_id: i64,
 }
 
 
@@ -126,17 +146,11 @@ pub enum UnsetCoupleError {
 
 
 /// TODO
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, AutoNew)]
 pub struct AddQuestionRequest {
     category: QuestionCategory,
     prompt: String,
     answer_type: AnswerType,
-}
-
-impl AddQuestionRequest {
-    pub fn new(category: QuestionCategory, prompt: String, answer_type: AnswerType) -> Self {
-        Self {category, prompt, answer_type}
-    }
 }
 
 
@@ -144,11 +158,18 @@ impl AddQuestionRequest {
 pub enum AddQuestionError {}
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
+pub struct RemoveQuestionRequest {
+    #[getter(copy)]
+    question_id: i64,
+}
+
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum RemoveQuestionError {}
 
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
 pub struct AddAnswerRequest {
     question_id: i64,
     user_id: i64,
@@ -156,18 +177,12 @@ pub struct AddAnswerRequest {
     content: AnswerContent,
 }
 
-impl AddAnswerRequest {
-    pub fn new(question_id: i64, user_id: i64, timestamp: Zoned, content: AnswerContent) -> Self {
-        Self {question_id, user_id, timestamp, content}
-    }
-}
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum AddAnswerError {}
 
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, AutoNew)]
 pub struct AddLocationRequest {
     user_id: i64,
     timestamp: Zoned,
@@ -176,27 +191,15 @@ pub struct AddLocationRequest {
     accuracy: usize,
 }
 
-impl AddLocationRequest {
-    pub fn new(user_id: i64, timestamp: Zoned, latitude: Latitude, longitude: Longitude, accuracy: usize) -> Self {
-        Self {user_id, timestamp, latitude, longitude, accuracy}
-    }
-}
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum AddLocationError {}
 
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
 pub struct StartHeartbeatRequest {
     user_id: i64,
     start_timestamp: Zoned,
-}
-
-impl StartHeartbeatRequest {
-    pub fn new(user_id: i64, start_timestamp: Zoned) -> Self {
-        Self {user_id, start_timestamp}
-    }
 }
 
 
@@ -204,16 +207,10 @@ impl StartHeartbeatRequest {
 pub enum StartHeartbeatError {}
 
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
 pub struct EndHeartbeatRequest {
     heartbeat_id: i64,
     end_timestamp: Zoned,
-}
-
-impl EndHeartbeatRequest {
-    pub fn new(heartbeat_id: i64, end_timestamp: Zoned) -> Self {
-        Self {heartbeat_id, end_timestamp}
-    }
 }
 
 

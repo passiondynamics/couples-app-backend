@@ -14,11 +14,6 @@ use argon2::password_hash::{
     PasswordHasher,
     SaltString,
 };
-use axum::extract::Json;
-use axum::response::{
-    IntoResponse,
-    Response,
-};
 use derive_getters::Getters;
 use http::StatusCode;
 use jiff::Zoned;
@@ -27,13 +22,14 @@ use thiserror::Error;
 
 use std::ops::Range;
 
-use crate::models::interface::{
-    HTTPErrorResponse,
-    HTTPResponse,
-};
+use crate::models::interface::HTTPErrorResponse;
 use crate::constants::{
     get_username_regex,
     MIN_PASSWORD_LEN,
+};
+use util_macros::{
+    AutoIntoResponse,
+    AutoNew,
 };
 
 
@@ -45,7 +41,7 @@ use crate::constants::{
 /// See the [Ultimate Guide to Rust
 /// Newtypes](https://www.howtocodeit.com/articles/ultimate-guide-rust-newtypes)
 /// for why we do this. Fields that need to be validated are newtyped.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
 pub struct User {
     #[getter(copy)]
     id: i64,
@@ -53,13 +49,6 @@ pub struct User {
     password: Password,
     // created_at: Zoned,   // TODO: this + additional metadata?
     preferences: UserPreferences,
-}
-
-impl User {
-    /// Create a new user.
-    pub fn new(id: i64, username: Username, password: Password, preferences: UserPreferences) -> Self {
-        Self {id, username, password, preferences}
-    }
 }
 
 
@@ -87,18 +76,10 @@ impl Username {
 
 
 /// Error for not meeting username standards.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 #[error("username does not meet minimum requirements: `{0}`")]
+#[auto_into_response(StatusCode::UNPROCESSABLE_ENTITY, true)]
 pub struct InvalidUsernameError(String);
-
-impl IntoResponse for InvalidUsernameError {
-    fn into_response(self) -> Response {
-        let error = self.to_string();
-        error!("{}", error);
-        let response = HTTPErrorResponse::new(error);
-        (StatusCode::UNPROCESSABLE_ENTITY, Json(response)).into_response()
-    }
-}
 
 
 /// A (salted) Argon2 hash.
@@ -134,13 +115,16 @@ impl Password {
     }
 }
 
+
 /// Errors for not meeting password standards or hashing issues.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum PasswordError {
     #[error("password does not meet minimum length requirements")]
+    #[auto_into_response(StatusCode::UNPROCESSABLE_ENTITY, true)]
     Length,
 
     #[error("could not create password: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
     Unknown(String),
 }
 
@@ -188,7 +172,7 @@ impl UserPreferences {
 
 /// A paired set of users. Foundation for everything else (Q&A, location
 /// sharing, heartbeats, etc).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
 pub struct Couple {
     #[getter(copy)]
     id: i64,
@@ -201,13 +185,6 @@ pub struct Couple {
     // created_at: Zoned,
 }
 
-impl Couple {
-    /// Create a new pairing of users.
-    pub fn new(id: i64, user_id_1: i64, user_id_2: i64) -> Self {
-        Self {id, user_id_1, user_id_2}
-    }
-}
-
 
 // --- questions ---
 
@@ -215,7 +192,7 @@ impl Couple {
 /// what type of data the corresponding `Answer`s should store/for
 /// giving a user the correct way to answer a given question. See
 /// `AnswerType` for more details.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, AutoNew)]
 pub struct Question {
     id: i64,
     category: QuestionCategory,
@@ -250,7 +227,7 @@ pub enum AnswerType {
 /// Note that `response` is the actual content of the reply/the data,
 /// matched to what type of response is specified in `answer_type` of
 /// the `Question`.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
 pub struct Answer {
     id: i64,
     question_id: i64,
@@ -277,7 +254,7 @@ pub enum AnswerContent {
 
 /// A single location datapoint (of a specific user at a specified instant
 /// in time).
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, AutoNew)]
 pub struct Location {
     id: i64,
     user_id: i64,
@@ -312,7 +289,7 @@ pub struct Longitude(f64);
 ///   3. de-duplication of events/notifications. If they press it 4 times
 ///   in 1 second, we shouldn't propagate their neediness in 4
 ///   notifications to their partner (we notify, we don't enable).
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
 pub struct Heartbeat {
     id: i64,
     user_id: i64,
