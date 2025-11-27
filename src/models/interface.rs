@@ -3,20 +3,52 @@
 //! Description: Describes what changes can be made to the data through
 //! the interfaces (and what info is needed to make those changes).
 
-use thiserror::Error;
+use axum::response::IntoResponse;
 use derive_getters::Getters;
 use jiff::Zoned;
+use serde::Serialize;
+use thiserror::Error;
 
 use crate::models::data::{
+    AnswerContent,
+    AnswerType,
     Latitude,
     Longitude,
     Password,
     QuestionCategory,
-    Response,
-    ResponseType,
     Username,
 };
 
+// --- http only ---
+
+macro_rules! generate_response {
+    ($name:ident, $( $d:ident ),*) => {
+        #[derive(Debug, Clone, Serialize)]
+        pub struct $name<T>
+        where
+            T: IntoResponse,
+        {
+            $(
+                $d: T,
+            )*
+        }
+
+        impl<T> $name<T>
+        where
+            T: IntoResponse,
+        {
+            pub fn new($($d: T)*) -> Self {
+                Self {$($d)*}
+            }
+        }
+    }
+}
+
+generate_response!(HTTPResponse, data);
+generate_response!(HTTPErrorResponse, error);
+
+
+// --- http + database ---
 
 /// Request used to add a new user.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters)]
@@ -98,12 +130,12 @@ pub enum UnsetCoupleError {
 pub struct AddQuestionRequest {
     category: QuestionCategory,
     prompt: String,
-    response_type: ResponseType,
+    answer_type: AnswerType,
 }
 
 impl AddQuestionRequest {
-    pub fn new(category: QuestionCategory, prompt: String, response_type: ResponseType) -> Self {
-        Self {category, prompt, response_type}
+    pub fn new(category: QuestionCategory, prompt: String, answer_type: AnswerType) -> Self {
+        Self {category, prompt, answer_type}
     }
 }
 
@@ -121,12 +153,12 @@ pub struct AddAnswerRequest {
     question_id: i64,
     user_id: i64,
     timestamp: Zoned,
-    response: Response,
+    content: AnswerContent,
 }
 
 impl AddAnswerRequest {
-    pub fn new(question_id: i64, user_id: i64, timestamp: Zoned, response: Response) -> Self {
-        Self {question_id, user_id, timestamp, response}
+    pub fn new(question_id: i64, user_id: i64, timestamp: Zoned, content: AnswerContent) -> Self {
+        Self {question_id, user_id, timestamp, content}
     }
 }
 

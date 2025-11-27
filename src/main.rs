@@ -20,17 +20,6 @@ use services::{
     CouplesAppService,
 };
 
-use interfaces::database::DatabaseInterface;
-use models::interface::{
-    AddUserRequest,
-    SetCoupleRequest,
-};
-use models::data::{
-    Couple,
-    Password,
-    Username,
-};
-
 
 /// Set up application from the inside -> outward, and start.
 #[tokio::main]
@@ -47,6 +36,7 @@ async fn main() -> Result<()> {
     let sqlite = SQLiteInterface::new(&config).await?;
     let app = CouplesAppService::new(sqlite);
     let http = HTTPInterface::new(&config, app).await?;
+    http.serve().await?;
 
     // --- TODO: temporary ---
     /*

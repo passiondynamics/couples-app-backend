@@ -11,6 +11,7 @@ use axum::{
     routing::{
 //        delete,
         get,
+        post,
 //        put,
     },
     Router,
@@ -31,8 +32,14 @@ use tracing::{
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::interfaces::http::handlers::{
+    add_user,
+    health,
+};
 use crate::models::config::Config;
 use crate::services::AppService;
+
+mod handlers;
 
 
 /// Dynamic state to be shared across HTTP handlers.
@@ -63,7 +70,6 @@ impl HTTPInterface {
                                              "request",
                                              method=%r.method(),
                                              uri=%r.uri(),
-                                             version=?r.version(),
                                         )
                                      })
                                      .on_request(())
@@ -79,7 +85,8 @@ impl HTTPInterface {
         let app = Arc::new(raw_app);
         let app_state = AppState {app};
         let router = Router::new()
-//                            .route("/health", get(health))
+                            .route("/health", get(health))
+                            .route("/add_user", post(add_user))
                             .layer(middleware)
                             .with_state(app_state);
         let listener = TcpListener::bind(("0.0.0.0", config.port))

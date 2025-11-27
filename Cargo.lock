@@ -201,6 +201,7 @@ dependencies = [
  "http",
  "jiff",
  "regex",
+ "serde",
  "sqlx",
  "thiserror",
  "tokio",

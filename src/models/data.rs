@@ -14,12 +14,23 @@ use argon2::password_hash::{
     PasswordHasher,
     SaltString,
 };
+use axum::extract::Json;
+use axum::response::{
+    IntoResponse,
+    Response,
+};
 use derive_getters::Getters;
+use http::StatusCode;
 use jiff::Zoned;
+use tracing::error;
 use thiserror::Error;
 
 use std::ops::Range;
 
+use crate::models::interface::{
+    HTTPErrorResponse,
+    HTTPResponse,
+};
 use crate::constants::{
     get_username_regex,
     MIN_PASSWORD_LEN,
@@ -64,7 +75,7 @@ impl Username {
         if username_re.is_match(&username) {
             Ok(Self(username))
         } else {
-            Err(InvalidUsernameError)
+            Err(InvalidUsernameError(username))
         }
     }
 
@@ -76,9 +87,18 @@ impl Username {
 
 
 /// Error for not meeting username standards.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
-#[error("username does not meet minimum requirements")]
-pub struct InvalidUsernameError;
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[error("username does not meet minimum requirements: `{0}`")]
+pub struct InvalidUsernameError(String);
+
+impl IntoResponse for InvalidUsernameError {
+    fn into_response(self) -> Response {
+        let error = self.to_string();
+        error!("{}", error);
+        let response = HTTPErrorResponse::new(error);
+        (StatusCode::UNPROCESSABLE_ENTITY, Json(response)).into_response()
+    }
+}
 
 
 /// A (salted) Argon2 hash.
@@ -191,16 +211,16 @@ impl Couple {
 
 // --- questions ---
 
-/// A single prompt template. Note that `response_type` is for deciding
+/// A single prompt template. Note that `answer_type` is for deciding
 /// what type of data the corresponding `Answer`s should store/for
 /// giving a user the correct way to answer a given question. See
-/// `ResponseType` for more details.
+/// `AnswerType` for more details.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Question {
     id: i64,
     category: QuestionCategory,
     prompt: String,
-    response_type: ResponseType,
+    answer_type: AnswerType,
 }
 
 
@@ -210,12 +230,12 @@ pub enum QuestionCategory {}
 
 
 /// How a user can respond/what type of input to provide. Note an instance
-/// of `ResponseType` *only* sets the boundaries of how to respond (e.g.
+/// of `AnswerType` *only* sets the boundaries of how to respond (e.g.
 /// a user should respond with a number between 1 and 5, or free-form
 /// input to type anything they want). In other words, this is intended as
 /// a marker, not as a content store.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ResponseType {
+pub enum AnswerType {
     Text,
     YesNo,
     Number(Range<usize>),
@@ -228,7 +248,7 @@ pub enum ResponseType {
 /// A single response to a specified question, i.e. this **user**'s
 /// response to this question, not both users/partners to the question.
 /// Note that `response` is the actual content of the reply/the data,
-/// matched to what type of response is specified in `response_type` of
+/// matched to what type of response is specified in `answer_type` of
 /// the `Question`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Answer {
@@ -236,16 +256,16 @@ pub struct Answer {
     question_id: i64,
     user_id: i64,
     timestamp: Zoned,
-    response: Response,
+    content: AnswerContent,
 }
 
 
 // TODO: what to do about this duplication/will it become complicated to
 // handle?
 /// What the user responded to a question with/the actual input provided.
-/// 1-to-1 with `ResponseType`'s options.
+/// 1-to-1 with `AnswerType`'s options.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Response {
+pub enum AnswerContent {
     Text(String),
     YesNo(bool),
     Number(usize),
