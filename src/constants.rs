@@ -2,6 +2,7 @@
 //! Date: 2025-11-03 @ 10:47pm
 //! Description: Static constants to be used.
 
+use bincode::config;
 use regex::Regex;
 
 use std::sync::OnceLock;
@@ -21,3 +22,5 @@ pub fn get_username_regex() -> &'static Regex {
 }
 
 pub const MIN_PASSWORD_LEN: usize = 12;
+
+pub const BINCODE_CONFIG: config::Configuration = config::standard();

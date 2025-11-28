@@ -8,6 +8,7 @@ use anyhow::{
     Context,
     Result,
 };
+use bincode::encode_to_vec;
 use sqlx::query;
 use sqlx::migrate::{
     MigrateDatabase,
@@ -26,6 +27,7 @@ use std::mem::swap;
 use std::str::FromStr;
 
 use crate::constants::{
+    BINCODE_CONFIG,
     DB_FILENAME,
     MIGRATIONS_DIR,
 };
@@ -191,7 +193,7 @@ impl DatabaseInterface for SQLiteInterface {
 
                           // Otherwise it's an issue with the statement
                           // itself.
-                          _ => AddUserError::Unknown(e.to_string()),
+                          _ => AddUserError::InsertFailure(e.to_string()),
                       })?
                       .last_insert_rowid();
 
@@ -226,7 +228,7 @@ impl DatabaseInterface for SQLiteInterface {
 
         let count = query.execute(&self.pool)
                          .await
-                         .map_err(|e| RemoveUserError::Unknown(e.to_string()))?
+                         .map_err(|e| RemoveUserError::DeleteFailure(e.to_string()))?
                          .rows_affected();
 
         // Verify that we actually removed exactly one user.
@@ -261,7 +263,7 @@ impl DatabaseInterface for SQLiteInterface {
                           // Either the `user_id_1` or `user_id_2` foreign
                           // key constraint failed.
                           Some(e) if e.is_foreign_key_violation() => SetCoupleError::UserNotFound,
-                          _ => SetCoupleError::Unknown(e.to_string()),
+                          _ => SetCoupleError::InsertFailure(e.to_string()),
                       })?
                       .last_insert_rowid();
 
@@ -281,7 +283,7 @@ impl DatabaseInterface for SQLiteInterface {
 
         let count = query.execute(&self.pool)
                          .await
-                         .map_err(|e| UnsetCoupleError::Unknown(e.to_string()))?
+                         .map_err(|e| UnsetCoupleError::DeleteFailure(e.to_string()))?
                          .rows_affected();
 
         if count == 1 {
@@ -292,11 +294,55 @@ impl DatabaseInterface for SQLiteInterface {
     }
 
     async fn add_question(&self, request: &AddQuestionRequest) -> Result<Question, AddQuestionError> {
-        todo!()
+        // Enums are encoded via `bincode` and inserted as a `BLOB` type.
+        let category = request.category();
+        let category_enc = encode_to_vec(category, BINCODE_CONFIG)
+                           .map_err(|e| AddQuestionError::EncodeFailure(e.to_string()))?;
+        let prompt = request.prompt().clone();
+        let answer_type = request.answer_type().clone();
+        let answer_type_enc = encode_to_vec(&answer_type, BINCODE_CONFIG)
+                              .map_err(|e| AddQuestionError::EncodeFailure(e.to_string()))?;
+
+        let query = query(r#"
+                INSERT INTO question
+                    (category, prompt, answer_type)
+                VALUES
+                    ($1, $2, $3)
+            "#)
+            .bind(category_enc)
+            .bind(&prompt)
+            .bind(answer_type_enc);
+
+        let id = query.execute(&self.pool)
+                      .await
+                      .map_err(|e| AddQuestionError::InsertFailure(e.to_string()))?
+                      .last_insert_rowid();
+
+        Ok(Question::new(
+            id,
+            category,
+            prompt,
+            answer_type,
+        ))
     }
 
     async fn remove_question(&self, request: &RemoveQuestionRequest) -> Result<(), RemoveQuestionError> {
-        todo!()
+        let query = query(r#"
+                DELETE FROM question
+                WHERE id = $1
+            "#)
+            .bind(request.question_id());
+
+        let count = query.execute(&self.pool)
+                         .await
+                         .map_err(|e| RemoveQuestionError::DeleteFailure(e.to_string()))?
+                         .rows_affected();
+
+        if count == 1 {
+            Ok(())
+        } else {
+            Err(RemoveQuestionError::QuestionNotFound)
+        }
     }
 
     async fn add_answer(&self, request: &AddAnswerRequest) -> Result<Answer, AddAnswerError> {

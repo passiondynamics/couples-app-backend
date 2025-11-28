@@ -38,28 +38,5 @@ async fn main() -> Result<()> {
     let http = HTTPInterface::new(&config, app).await?;
     http.serve().await?;
 
-    // --- TODO: temporary ---
-    /*
-
-    let mut users = vec![];
-    let data = [("irith", "testpassword"), ("vickivic", "testpassword")];
-
-    for (u, p) in data.iter() {
-        let username = Username::new(u)?;
-        let password = Password::new(p)?;
-        let add_user_request = AddUserRequest::new(username, password);
-        users.push(sqlite.add_user(&add_user_request).await?);
-    }
-    info!("{:?}", users);
-
-    let set_couple_request = SetCoupleRequest::new(1, 2);
-    let partner = sqlite.set_couple(&set_couple_request).await?;
-    info!("{:?}", partner);
-
-    sqlite.remove_user(1).await?;
-
-    */
-    // --- TODO: temporary ---
-
     Ok(())
 }

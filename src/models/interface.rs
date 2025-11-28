@@ -83,9 +83,9 @@ pub enum AddUserError {
     #[auto_into_response(StatusCode::CONFLICT, true)]
     UsernameExists(String),
 
-    #[error("could not insert user: {0}")]
+    #[error("could not insert user into database: {0}")]
     #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
-    Unknown(String),
+    InsertFailure(String),
 }
 
 
@@ -104,9 +104,9 @@ pub enum RemoveUserError {
     #[auto_into_response(StatusCode::NOT_FOUND, true)]
     UserNotFound,
 
-    #[error("could not remove user: {0}")]
+    #[error("could not delete user from database: {0}")]
     #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
-    Unknown(String),
+    DeleteFailure(String),
 }
 
 
@@ -128,9 +128,9 @@ pub enum SetCoupleError {
     #[auto_into_response(StatusCode::NOT_FOUND, true)]
     UserNotFound,
 
-    #[error("could not set couple: {0}")]
+    #[error("could not insert couple into database: {0}")]
     #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
-    Unknown(String),
+    InsertFailure(String),
 }
 
 
@@ -149,33 +149,50 @@ pub enum UnsetCoupleError {
     #[auto_into_response(StatusCode::NOT_FOUND, true)]
     CoupleNotFound,
 
-    #[error("could not unset couple: {0}")]
+    #[error("could not delete couple from database: {0}")]
     #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
-    Unknown(String),
+    DeleteFailure(String),
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, AutoNew)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Getters, AutoNew)]
 pub struct AddQuestionRequest {
+    #[getter(copy)]
     category: QuestionCategory,
     prompt: String,
     answer_type: AnswerType,
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
-pub enum AddQuestionError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
+pub enum AddQuestionError {
+    #[error("could not encode field: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    EncodeFailure(String),
+
+    #[error("could not insert question into database: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    InsertFailure(String),
+}
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Getters, AutoNew)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Getters, AutoNew)]
 pub struct RemoveQuestionRequest {
     #[getter(copy)]
     question_id: i64,
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
-pub enum RemoveQuestionError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
+pub enum RemoveQuestionError {
+    #[error("could not find corresponding question")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
+    QuestionNotFound,
+
+    #[error("could not delete question from database: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    DeleteFailure(String),
+}
 
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]

@@ -14,9 +14,14 @@ use argon2::password_hash::{
     PasswordHasher,
     SaltString,
 };
+use bincode::{
+    Decode,
+    Encode,
+};
 use derive_getters::Getters;
 use http::StatusCode;
 use jiff::Zoned;
+use serde::Deserialize;
 use tracing::error;
 use thiserror::Error;
 
@@ -109,7 +114,7 @@ impl Password {
         );
         let salt = SaltString::generate(&mut OsRng);
         let hash = argon2.hash_password(raw.as_bytes(), &salt)
-                         .map_err(|e| PasswordError::Unknown(e.to_string()))?
+                         .map_err(|e| PasswordError::HashFailure(e.to_string()))?
                          .to_string();
 
         Ok(Self(hash))
@@ -137,9 +142,9 @@ pub enum PasswordError {
     #[auto_into_response(StatusCode::UNPROCESSABLE_ENTITY, true)]
     Length,
 
-    #[error("could not create password: {0}")]
+    #[error("could not create password hash: {0}")]
     #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
-    Unknown(String),
+    HashFailure(String),
 }
 
 
@@ -216,8 +221,11 @@ pub struct Question {
 
 
 /// A label for grouping questions/what type of topic.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum QuestionCategory {}
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Decode, Deserialize, Encode)]
+#[serde(rename_all = "snake_case")]
+pub enum QuestionCategory {
+    General,
+}
 
 
 /// How a user can respond/what type of input to provide. Note an instance
@@ -225,7 +233,8 @@ pub enum QuestionCategory {}
 /// a user should respond with a number between 1 and 5, or free-form
 /// input to type anything they want). In other words, this is intended as
 /// a marker, not as a content store.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Decode, Deserialize, Encode)]
+#[serde(rename_all = "snake_case")]
 pub enum AnswerType {
     Text,
     YesNo,

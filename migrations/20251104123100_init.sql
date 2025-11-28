@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS couple(
 
 CREATE TABLE IF NOT EXISTS question(
     id              INTEGER     PRIMARY KEY     AUTOINCREMENT,
-    category        INTEGER     NOT NULL,
+    category        BLOB        NOT NULL,
     prompt          TEXT        NOT NULL,
-    response_type   BLOB        NOT NULL
+    answer_type     BLOB        NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS answer(
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS answer(
     question_id     INTEGER     NOT NULL,
     user_id         INTEGER     NOT NULL,
     timestamp       TEXT        NOT NULL,
-    response        BLOB        NOT NULL,
+    content         BLOB        NOT NULL,
 
     FOREIGN KEY(question_id) REFERENCES question(id) ON DELETE CASCADE,
     FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE

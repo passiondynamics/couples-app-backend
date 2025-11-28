@@ -23,9 +23,11 @@ use axum::{
 use http::StatusCode;
 
 use crate::models::interface::{
+    AddQuestionRequest,
     AddUserRequest,
 //    HTTPResponse,
     RawAddUserRequest,
+    RemoveQuestionRequest,
     RemoveUserRequest,
     SetCoupleRequest,
     UnsetCoupleRequest,
@@ -39,6 +41,7 @@ pub fn generate_routes<A: AppService>() -> Router<AppState<A>> {
            .route("/health", get(health))
            .route("/user", post(add_user).delete(remove_user))  // TODO: delete goes to `/user/{user_id}` w/ Path extractor?
            .route("/couple", post(set_couple).delete(unset_couple))
+           .route("/question", post(add_question).delete(remove_question))
 }
 
 
@@ -129,11 +132,31 @@ async fn unset_couple<A: AppService>(
 }
 
 
-/*
-
 /// Add a new question.
+async fn add_question<A: AppService>(
+    State(state): State<AppState<A>>,
+    Json(request): Json<AddQuestionRequest>,
+) -> Result<impl IntoResponse> {
+    println!("request: {:?}", request);
+    state.app.add_question(&request).await?;
+
+    Ok(StatusCode::CREATED)
+}
+
 
 /// Remove a given question.
+async fn remove_question<A: AppService>(
+    State(state): State<AppState<A>>,
+    request: Query<RemoveQuestionRequest>,
+) -> Result<impl IntoResponse> {
+    state.app.remove_question(&request).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+
+/*
+
 
 /// Add a new answer.
 
