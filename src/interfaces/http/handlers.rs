@@ -23,6 +23,8 @@ use axum::{
 use http::StatusCode;
 
 use crate::models::interface::{
+    AddAnswerRequest,
+    AddLocationRequest,
     AddQuestionRequest,
     AddUserRequest,
 //    HTTPResponse,
@@ -30,6 +32,7 @@ use crate::models::interface::{
     RemoveQuestionRequest,
     RemoveUserRequest,
     SetCoupleRequest,
+    StartHeartbeatRequest,
     UnsetCoupleRequest,
 };
 use crate::interfaces::http::AppState;
@@ -42,6 +45,9 @@ pub fn generate_routes<A: AppService>() -> Router<AppState<A>> {
            .route("/user", post(add_user).delete(remove_user))  // TODO: delete goes to `/user/{user_id}` w/ Path extractor?
            .route("/couple", post(set_couple).delete(unset_couple))
            .route("/question", post(add_question).delete(remove_question))
+           .route("/answer", post(add_answer))
+           .route("/location", post(add_location))
+           .route("/heartbeat", post(start_heartbeat))
 }
 
 
@@ -155,14 +161,36 @@ async fn remove_question<A: AppService>(
 }
 
 
-/*
-
-
 /// Add a new answer.
+async fn add_answer<A: AppService>(
+    State(state): State<AppState<A>>,
+    Json(request): Json<AddAnswerRequest>,
+) -> Result<impl IntoResponse> {
+    state.app.add_answer(&request).await?;
+
+    Ok(StatusCode::CREATED)
+}
 
 /// Add a new location datapoint.
+async fn add_location<A: AppService>(
+    State(state): State<AppState<A>>,
+    Json(request): Json<AddLocationRequest>,
+) -> Result<impl IntoResponse> {
+    state.app.add_location(&request).await?;
+
+    Ok(StatusCode::CREATED)
+}
 
 /// Add a new heartbeat range.
+async fn start_heartbeat<A: AppService>(
+    State(state): State<AppState<A>>,
+    Json(request): Json<StartHeartbeatRequest>,
+) -> Result<impl IntoResponse> {
+    state.app.start_heartbeat(&request).await?;
+
+    Ok(StatusCode::CREATED)
+}
+/*
 
 /// Mark a given heartbeat range as finished.
 */

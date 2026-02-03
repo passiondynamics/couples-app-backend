@@ -124,7 +124,7 @@ pub struct SetCoupleRequest {
 /// Errors when associating users together.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum SetCoupleError {
-    #[error("could not find corresponding user")]
+    #[error("could not find corresponding user for couple")]
     #[auto_into_response(StatusCode::NOT_FOUND, true)]
     UserNotFound,
 
@@ -166,7 +166,7 @@ pub struct AddQuestionRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
 pub enum AddQuestionError {
-    #[error("could not encode field: {0}")]
+    #[error("could not encode question field: {0}")]
     #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
     EncodeFailure(String),
 
@@ -195,42 +195,84 @@ pub enum RemoveQuestionError {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Getters, AutoNew)]
 pub struct AddAnswerRequest {
+    #[getter(copy)]
     question_id: i64,
+
+    #[getter(copy)]
     user_id: i64,
     timestamp: Zoned,
     content: AnswerContent,
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
-pub enum AddAnswerError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
+pub enum AddAnswerError {
+    #[error("could not encode answer field: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    EncodeFailure(String),
+
+    #[error("could not find corresponding question or user for answer")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
+    QuestionOrUserNotFound,
 
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, AutoNew)]
-pub struct AddLocationRequest {
-    user_id: i64,
-    timestamp: Zoned,
-    latitude: Latitude,
-    longitude: Longitude,
-    accuracy: usize,
+    #[error("could not insert answer into database: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    InsertFailure(String),
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
-pub enum AddLocationError {}
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Getters, AutoNew)]
+pub struct AddLocationRequest {
+    #[getter(copy)]
+    user_id: i64,
+    timestamp: Zoned,
+
+    #[getter(copy)]
+    latitude: Latitude,
+
+    #[getter(copy)]
+    longitude: Longitude,
+
+    #[getter(copy)]
+    accuracy: u32,
+}
 
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
+pub enum AddLocationError {
+    #[error("could not find corresponding user for location")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
+    UserNotFound,
+
+
+    #[error("could not insert location into database: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    InsertFailure(String),
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Getters, AutoNew)]
 pub struct StartHeartbeatRequest {
+    #[getter(copy)]
     user_id: i64,
     start_timestamp: Zoned,
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
-pub enum StartHeartbeatError {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error, AutoIntoResponse)]
+pub enum StartHeartbeatError {
+    #[error("could not find corresponding user for heartbeat")]
+    #[auto_into_response(StatusCode::NOT_FOUND, true)]
+    UserNotFound,
+
+
+    #[error("could not insert heartbeat into database: {0}")]
+    #[auto_into_response(StatusCode::INTERNAL_SERVER_ERROR, false)]
+    InsertFailure(String),
+}
 
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AutoNew)]
@@ -240,5 +282,5 @@ pub struct EndHeartbeatRequest {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum EndHeartbeatError {}

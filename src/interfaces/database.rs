@@ -20,6 +20,7 @@ use sqlx::sqlite::{
     SqliteJournalMode,
     SqlitePool,
 };
+use tracing::debug;
 use tracing::info;
 
 use std::fs;
@@ -52,16 +53,16 @@ use crate::models::interface::{
     AddUserRequest,
     EndHeartbeatError,
     EndHeartbeatRequest,
-    RemoveQuestionRequest,
     RemoveQuestionError,
-    RemoveUserRequest,
+    RemoveQuestionRequest,
     RemoveUserError,
+    RemoveUserRequest,
     SetCoupleError,
     SetCoupleRequest,
     StartHeartbeatError,
     StartHeartbeatRequest,
-    UnsetCoupleRequest,
     UnsetCoupleError,
+    UnsetCoupleRequest,
 };
 
 
@@ -189,7 +190,7 @@ impl DatabaseInterface for SQLiteInterface {
                       .await
                       .map_err(|e| match e.as_database_error() {
                           // If our `username` constraint is violated.
-                          Some(e) if e.is_unique_violation() => AddUserError::UsernameExists(username.as_str().to_string()),
+                          Some(err) if err.is_unique_violation() => AddUserError::UsernameExists(username.as_str().to_string()),
 
                           // Otherwise it's an issue with the statement
                           // itself.
@@ -262,7 +263,7 @@ impl DatabaseInterface for SQLiteInterface {
                       .map_err(|e| match e.as_database_error() {
                           // Either the `user_id_1` or `user_id_2` foreign
                           // key constraint failed.
-                          Some(e) if e.is_foreign_key_violation() => SetCoupleError::UserNotFound,
+                          Some(err) if err.is_foreign_key_violation() => SetCoupleError::UserNotFound,
                           _ => SetCoupleError::InsertFailure(e.to_string()),
                       })?
                       .last_insert_rowid();
@@ -346,15 +347,115 @@ impl DatabaseInterface for SQLiteInterface {
     }
 
     async fn add_answer(&self, request: &AddAnswerRequest) -> Result<Answer, AddAnswerError> {
-        todo!()
+        let question_id = request.question_id();
+        let user_id = request.user_id();
+        let timestamp = request.timestamp().clone();
+        let timestamp_enc = timestamp.to_string();
+        let content = request.content().clone();
+        let content_enc = encode_to_vec(&content, BINCODE_CONFIG)
+                          .map_err(|e| AddAnswerError::EncodeFailure(e.to_string()))?;
+
+        let query = query(r#"
+                INSERT INTO answer
+                    (question_id, user_id, timestamp, content)
+                VALUES
+                    ($1, $2, $3, $4)
+            "#)
+            .bind(question_id)
+            .bind(user_id)
+            .bind(timestamp_enc)
+            .bind(content_enc);
+
+        let id = query.execute(&self.pool)
+                      .await
+                      .map_err(|e| match e.as_database_error() {
+                          // Unfortunately, we can't tell *which*
+                          // constraint fails (limitation of SQLite3).
+                          Some(err) if err.is_foreign_key_violation() => AddAnswerError::QuestionOrUserNotFound,
+                          _ => AddAnswerError::InsertFailure(e.to_string()),
+                      })?
+                      .last_insert_rowid();
+
+        Ok(Answer::new(
+            id,
+            question_id,
+            user_id,
+            timestamp,
+            content,
+        ))
     }
 
     async fn add_location(&self, request: &AddLocationRequest) -> Result<Location, AddLocationError> {
-        todo!()
+        let user_id = request.user_id();
+        let timestamp = request.timestamp().clone();
+        let timestamp_enc = timestamp.to_string();
+
+        // We unwrap both of these newtypes before binding them.
+        let latitude = request.latitude();
+        let latitude_enc: f64 = latitude.into();
+        let longitude = request.longitude();
+        let longitude_enc: f64 = longitude.into();
+        let accuracy = request.accuracy();
+
+        let query = query(r#"
+                INSERT INTO location
+                    (user_id, timestamp, latitude, longitude, accuracy)
+                VALUES
+                    ($1, $2, $3, $4, $5)
+            "#)
+            .bind(user_id)
+            .bind(timestamp_enc)
+            .bind(latitude_enc)
+            .bind(longitude_enc)
+            .bind(accuracy);
+
+        let id = query.execute(&self.pool)
+                      .await
+                      .map_err(|e| match e.as_database_error() {
+                          Some(err) if err.is_foreign_key_violation() => AddLocationError::UserNotFound,
+                          _ => AddLocationError::InsertFailure(e.to_string()),
+                      })?
+                      .last_insert_rowid();
+
+        Ok(Location::new(
+            id,
+            user_id,
+            timestamp,
+            latitude,
+            longitude,
+            accuracy,
+        ))
     }
 
     async fn start_heartbeat(&self, request: &StartHeartbeatRequest) -> Result<Heartbeat, StartHeartbeatError> {
-        todo!()
+        let user_id = request.user_id();
+        let start_timestamp = request.start_timestamp().clone();
+        let start_timestamp_enc = start_timestamp.to_string();
+
+        let query = query(r#"
+                INSERT INTO heartbeat
+                    (user_id, start_timestamp)
+                VALUES
+                    ($1, $2)
+            "#)
+            .bind(user_id)
+            .bind(start_timestamp_enc);
+
+        let id = query.execute(&self.pool)
+                      .await
+                      .map_err(|e| match e.as_database_error() {
+                          Some(err) if err.is_foreign_key_violation() => StartHeartbeatError::UserNotFound,
+                          _ => StartHeartbeatError::InsertFailure(e.to_string()),
+                      })?
+                      .last_insert_rowid();
+
+        let end_timestamp = None;
+        Ok(Heartbeat::new(
+            id,
+            user_id,
+            start_timestamp,
+            end_timestamp,
+        ))
     }
 
     async fn end_heartbeat(&self, request: &EndHeartbeatRequest) -> Result<Heartbeat, EndHeartbeatError> {

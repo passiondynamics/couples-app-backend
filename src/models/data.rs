@@ -221,7 +221,7 @@ pub struct Question {
 
 
 /// A label for grouping questions/what type of topic.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Decode, Deserialize, Encode)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Encode)]
 #[serde(rename_all = "snake_case")]
 pub enum QuestionCategory {
     General,
@@ -233,7 +233,7 @@ pub enum QuestionCategory {
 /// a user should respond with a number between 1 and 5, or free-form
 /// input to type anything they want). In other words, this is intended as
 /// a marker, not as a content store.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Decode, Deserialize, Encode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Encode)]
 #[serde(rename_all = "snake_case")]
 pub enum AnswerType {
     Text,
@@ -264,7 +264,8 @@ pub struct Answer {
 // handle?
 /// What the user responded to a question with/the actual input provided.
 /// 1-to-1 with `AnswerType`'s options.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Encode)]
+#[serde(rename_all = "snake_case")]
 pub enum AnswerContent {
     Text(String),
     YesNo(bool),
@@ -289,14 +290,26 @@ pub struct Location {
 
 
 /// North-south component of location datapoint.
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Deserialize)]
 pub struct Latitude(f64);
+
+impl Into<f64> for Latitude {
+    fn into(self) -> f64 {
+        self.0
+    }
+}
 
 
 /// West-east component of location datapoint.
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Deserialize)]
 pub struct Longitude(f64);
 
+
+impl Into<f64> for Longitude {
+    fn into(self) -> f64 {
+        self.0
+    }
+}
 
 // --- heartbeats ---
 
